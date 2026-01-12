@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a DTO field as a computed field whose value is derived from one or more
- * entity fields through a computation method.
+ * source fields through a computation method.
  *
  * <h2>Method Resolution</h2>
  * <p>The computation method can be resolved in two ways:</p>
@@ -104,7 +104,7 @@ import java.lang.annotation.Target;
  * <h3>Use Case 3: Target Specific Provider</h3>
  * <pre>{@code
  * @Projection(
- *   entity = User.class,
+ *   from = User.class,
  *   providers = {
  *     @Provider(LegacyComputations.class),    // Has getAge() returning String
  *     @Provider(ModernComputations.class)     // Has getAge() returning Integer
@@ -214,7 +214,7 @@ import java.lang.annotation.Target;
  * <h3>Example 1: Convention (Simple)</h3>
  * <pre>{@code
  * @Projection(
- *   entity = User.class,
+ *   from = User.class,
  *   providers = {@Provider(UserComputations.class)}
  * )
  * public class UserDTO {
@@ -226,7 +226,7 @@ import java.lang.annotation.Target;
  * <h3>Example 2: Override Method Name</h3>
  * <pre>{@code
  * @Projection(
- *   entity = User.class,
+ *   from = User.class,
  *   providers = {@Provider(UserComputations.class)}
  * )
  * public class UserDTO {
@@ -241,7 +241,7 @@ import java.lang.annotation.Target;
  * <h3>Example 3: Target Specific Provider</h3>
  * <pre>{@code
  * @Projection(
- *   entity = User.class,
+ *   from = User.class,
  *   providers = {
  *     @Provider(LegacyUtils.class),
  *     @Provider(ModernUtils.class)
@@ -262,7 +262,7 @@ import java.lang.annotation.Target;
  * <h3>Example 4: Reuse Same Method for Multiple Fields</h3>
  * <pre>{@code
  * @Projection(
- *   entity = Product.class,
+ *   from = Product.class,
  *   providers = {@Provider(FormatUtils.class)}
  * )
  * public class ProductDTO {
@@ -330,15 +330,15 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface Computed {
     /**
-     * Array of entity field names that this computed field depends on.
+     * Array of source field names that this computed field depends on.
      *
      * <p><b>Critical constraint:</b> All field names must reference fields from the source
-     * entity declared in {@link Projection#entity()}. References to other computed fields
+     * source class declared in {@link Projection#from()}. References to other computed fields
      * or DTO-specific fields are not permitted.</p>
      *
      * <p>This array defines:</p>
      * <ul>
-     *   <li>Which entity fields will be fetched from the database</li>
+     *   <li>Which source fields will be passed to the provider method</li>
      *   <li>The expected parameter types and order for the provider method</li>
      *   <li>The validation contract for compile-time checking</li>
      * </ul>
@@ -357,7 +357,7 @@ public @interface Computed {
      * }</pre>
      *
      * <h3>Why Entity-Only Dependencies?</h3>
-     * <p>Restricting dependencies to entity fields (no computed-to-computed dependencies):</p>
+     * <p>Restricting dependencies to source fields (no computed-to-computed dependencies):</p>
      * <ul>
      *   <li>Eliminates dependency graph resolution complexity</li>
      *   <li>Prevents circular dependency issues</li>
@@ -366,7 +366,7 @@ public @interface Computed {
      * </ul>
      *
      * <p><b>Design rationale:</b> If a computed field needs values that would come from
-     * another computed field, both should declare their dependencies directly from the entity.
+     * another computed field, both should declare their dependencies directly from the source.
      * The provider method can perform any necessary intermediate calculations internally.</p>
      *
      * <h3>Examples</h3>
@@ -379,12 +379,12 @@ public @interface Computed {
      * @Computed(dependsOn = {"firstName", "lastName", "middleName"})
      * private String fullNameWithMiddle;
      *
-     * // Nested entity field access (assuming User has Address relationship)
+     * // Nested source field access (assuming User has Address relationship)
      * @Computed(dependsOn = {"address.city", "address.country"})
      * private String location;
      * }</pre>
      *
-     * @return array of entity field paths that this computed field requires
+     * @return array of source field paths that this computed field requires
      */
     String[] dependsOn();
 
