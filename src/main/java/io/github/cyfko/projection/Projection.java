@@ -151,10 +151,16 @@ public @interface Projection {
      * {@code
      * providers = {
      *     &#64;Provider(UserComputations.class),                              // Static
-     *     @Provider(value = DateFormatter.class, bean = "isoFormatter")   // Bean
-     * }
+     *     &#64;Provider(value = DateFormatter.class, bean = "isoFormatter")   // Bean
      * }
      * </pre>
+     *
+     * <p>
+     * <b>Extensibility:</b> While providers are primarily used for resolving
+     * {@link Computed} fields, implementations may use them for additional
+     * projection-related behaviors. Such extensions are outside the scope of
+     * this specification.
+     * </p>
      *
      * @return the array of {@link Provider} declarations
      */

@@ -46,13 +46,14 @@ import java.lang.annotation.Target;
  * container
  * (e.g., Spring) and instance methods are used:
  * </p>
+ * 
  * <pre>{@code
  * &#64;Projection(
  *     from = User.class,
  *     providers = { @Provider(value = DateFormatter.class, bean = "isoDateFormatter") }
  * )
  * public class UserDTO {
- *     @Computed(dependsOn = {"createdAt"})
+ *     @Computed(dependsOn = { "createdAt" })
  *     private String formattedDate;
  * }
  *
@@ -77,6 +78,16 @@ import java.lang.annotation.Target;
  *     &#64;Provider(FallbackComputations.class)       // Searched second
  * }
  * }</pre>
+ *
+ * <h2>Extensibility</h2>
+ * <p>
+ * While providers are primarily used for resolving {@link Computed} fields,
+ * implementations may use them for additional projection-related behaviors
+ * (e.g., validation hooks, virtual fields, custom converters). Such extensions
+ * are outside the scope of this specification and are defined by the
+ * implementing
+ * annotation processor or framework.
+ * </p>
  *
  * @since 1.0.0
  * @author Frank KOSSI

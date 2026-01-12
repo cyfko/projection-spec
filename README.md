@@ -223,6 +223,8 @@ public class UserDTO { ... }
 | `value` | `Class<?>` | ✅ Yes | The provider class |
 | `bean` | `String` | ❌ No | Bean name for IoC lookup (empty = static methods) |
 
+> **Extensibility:** While providers are primarily used for resolving `@Computed` fields, implementations may use them for additional projection-related behaviors (e.g., validation hooks, virtual fields, custom converters). Such extensions are outside the scope of this specification.
+
 ---
 
 ### @Projected
