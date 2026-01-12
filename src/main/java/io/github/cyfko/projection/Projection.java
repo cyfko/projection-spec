@@ -45,7 +45,6 @@ import java.lang.annotation.Target;
  * 
  * <pre>
  * {
- *     &#64;code
  *     &#64;Projection(from = User.class, providers = {
  *             &#64;Provider(UserComputations.class),
  *             &#64;Provider(value = DateFormatter.class, bean = "isoDateFormatter")
@@ -154,13 +153,16 @@ public @interface Projection {
      *     &#64;Provider(value = DateFormatter.class, bean = "isoFormatter")   // Bean
      * }
      * </pre>
+    
      *
-     * <p>
+     * 
+    <p>
      * <b>Extensibility:</b> While providers are primarily used for resolving
      * {@link Computed} fields, implementations may use them for additional
      * projection-related behaviors. Such extensions are outside the scope of
      * this specification.
-     * </p>
+     * 
+    </p>
      *
      * @return the array of {@link Provider} declarations
      */
