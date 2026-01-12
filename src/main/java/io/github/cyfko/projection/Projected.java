@@ -47,12 +47,10 @@ import java.lang.annotation.Target;
  * named source field, enabling field renaming:
  * </p>
  * 
- * <pre>
- * {
- *     &#64;code
- *     &#64;Projection(from = User.class)
+ * <pre>{@code
+ *     @Projection(from = User.class)
  *     public class UserDTO {
- *         &#64;Projected(from = "email") // DTO field has different name
+ *         @Projected(from = "email") // DTO field has different name
  *         private String emailAddress;
  *
  *         @Projected(from = "createdAt") // DTO field has different name
@@ -76,9 +74,9 @@ import java.lang.annotation.Target;
  *     private String country;
  * }
  *
- * &#64;Projection(from = User.class)
+ * @Projection(from = User.class)
  * public class UserDTO {
- *     &#64;Projected(from = "address.city")
+ *     @Projected(from = "address.city")
  *     private String city;
  *
  *     @Projected(from = "address.country")
@@ -137,9 +135,9 @@ import java.lang.annotation.Target;
  *     private String passwordHash;  // Sensitive field
  * }
  *
- * &#64;Projection(from = User.class)
+ * @Projection(from = User.class)
  * public class UserDTO {
- *     &#64;Projected
+ *     @Projected
  *     private Long id;
  *
  *     @Projected
@@ -152,9 +150,9 @@ import java.lang.annotation.Target;
  *
  * <h3>API Contract Alignment</h3>
  * <pre>{@code
- * &#64;Projection(from = Product.class)
+ * @Projection(from = Product.class)
  * public class ProductDTO {
- *     &#64;Projected(from = "sku")
+ *     @Projected(from = "sku")
  *     private String productCode;  // API uses different terminology
  *
  *     @Projected(from = "name")
@@ -209,19 +207,17 @@ public @interface Projected {
      *
      * <h3>When to Use vs. Default Behavior</h3>
      * 
-     * <pre>
-     * {
-     *     &#64;code
+     * <pre>{@code
      *     // Use default (no @Projected) when names match
      *     private String email; // Assumes source also has 'email' field.
      *
      *     // Specify 'from' when:
      *     // 1. Renaming for clarity
-     *     &#64;Projected(from = "createdAt")
+     *     @Projected(from = "createdAt")
      *     private LocalDateTime registeredOn;
      *
      *     // 2. Navigating relationships
-     *     &#64;Projected(from = "profile.bio")
+     *     @Projected(from = "profile.bio")
      *     private String biography;
      *
      *     // 3. Avoiding naming conflicts

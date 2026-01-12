@@ -43,21 +43,20 @@ import java.lang.annotation.Target;
  *
  * <h2>Usage Example</h2>
  * 
- * <pre>
- * {
- *     &#64;Projection(from = User.class, providers = {
- *             &#64;Provider(UserComputations.class),
- *             &#64;Provider(value = DateFormatter.class, bean = "isoDateFormatter")
+ * <pre>{@code
+ *     @Projection(from = User.class, providers = {
+ *             @Provider(UserComputations.class),
+ *             @Provider(value = DateFormatter.class, bean = "isoDateFormatter")
  *     })
  *     public class UserDTO {
- *         &#64;Projected(from = "email")
+ *         @Projected(from = "email")
  *         private String emailAddress;
  *
  *         // Implicitly mapped by name matching
  *         private String firstName;
  *         private String lastName;
  *
- *         &#64;Computed(dependsOn = { "firstName", "lastName" })
+ *         @Computed(dependsOn = { "firstName", "lastName" })
  *         private String fullName;
  *
  *         @Computed(dependsOn = { "createdAt" })
@@ -72,7 +71,7 @@ import java.lang.annotation.Target;
  *     }
  *
  *     // Bean-based provider (Spring example)
- *     &#64;Service("isoDateFormatter")
+ *     @Service("isoDateFormatter")
  *     public class DateFormatter {
  *         public String getFormattedDate(LocalDateTime createdAt) {
  *             return createdAt.format(DateTimeFormatter.ISO_DATE);
@@ -146,14 +145,12 @@ public @interface Projection {
      * <b>Example:</b>
      * </p>
      * 
-     * <pre>
-     * {@code
+     * <pre>{@code
      * providers = {
-     *     &#64;Provider(UserComputations.class),                              // Static
-     *     &#64;Provider(value = DateFormatter.class, bean = "isoFormatter")   // Bean
+     *     @Provider(UserComputations.class),                              // Static
+     *     @Provider(value = DateFormatter.class, bean = "isoFormatter")   // Bean
      * }
-     * </pre>
-    
+     * }</pre>
      *
      * 
     <p>

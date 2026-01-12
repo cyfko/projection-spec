@@ -23,9 +23,8 @@ import java.lang.annotation.Target;
  * static methods:
  * </p>
  * 
- * <pre>
- * {
- *     &#64;Projection(from = User.class, providers = { @Provider(UserComputations.class) })
+ * <pre>{@code
+ *     @Projection(from = User.class, providers = { @Provider(UserComputations.class) })
  *     public class UserDTO {
  *         @Computed(dependsOn = { "firstName", "lastName" })
  *         private String fullName;
@@ -46,8 +45,8 @@ import java.lang.annotation.Target;
  * (e.g., Spring) and instance methods are used:
  * </p>
  * 
- * <pre>{
- * &#64;Projection(
+ * <pre>{@code
+ * @Projection(
  *     from = User.class,
  *     providers = { @Provider(value = DateFormatter.class, bean = "isoDateFormatter") }
  * )
@@ -56,7 +55,7 @@ import java.lang.annotation.Target;
  *     private String formattedDate;
  * }
  *
- * &#64;Service("isoDateFormatter")
+ * @Service("isoDateFormatter")
  * public class DateFormatter {
  *     public String getFormattedDate(LocalDateTime createdAt) {
  *         return createdAt.format(DateTimeFormatter.ISO_DATE);
@@ -71,11 +70,10 @@ import java.lang.annotation.Target;
  * using a <b>first-match-wins</b> strategy:
  * </p>
  * 
- * <pre>
- * {
+ * <pre>{@code
  * providers = {
- *     &#64;Provider(HighPriorityComputations.class),  // Searched first
- *     &#64;Provider(FallbackComputations.class)       // Searched second
+ *     @Provider(HighPriorityComputations.class),  // Searched first
+ *     @Provider(FallbackComputations.class)       // Searched second
  * }
  * }
  * </pre>
