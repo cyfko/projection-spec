@@ -456,4 +456,130 @@ public @interface Computed {
      * @since 1.1.0
      */
     MethodReference computedBy() default @MethodReference;
+
+    /**
+     * Array of reducer functions to apply to dependencies that traverse collections.
+     *
+     * <p>When a dependency path traverses one or more collections (e.g., {@code "orders.total"}),
+     * a reducer <b>must</b> be specified to aggregate the multiple values into a single result.</p>
+     *
+     * <h3>Correspondence Rule</h3>
+     * <p>Reducers correspond <b>only</b> to dependencies that traverse collections, in order:</p>
+     * <pre>{@code
+     * @Computed(
+     *     dependsOn = {"id", "address.city", "orders.total", "orders.quantity"},
+     *     //          scalar  scalar nested   collection     collection
+     *     reducers = {Reduce.SUM, Reduce.COUNT}
+     *     //          ↑ orders.total  ↑ orders.quantity
+     * )
+     * }</pre>
+     *
+     * <p><b>Constraint:</b> {@code reducers.length} must equal the number of dependencies
+     * that traverse collections (as determined by the implementation based on the source model).</p>
+     *
+     * <h3>Path Semantics</h3>
+     * <p>A path containing dots is <b>not</b> necessarily a collection traversal:</p>
+     * <ul>
+     *   <li>{@code "address.city"} → scalar nested field ({@code @Embedded} or {@code @ManyToOne})</li>
+     *   <li>{@code "orders.total"} → collection traversal ({@code @OneToMany})</li>
+     * </ul>
+     * <p>The distinction depends on the source model and is determined by the implementation.</p>
+     *
+     * <h3>Collection Path Rule</h3>
+     * <p>A path traversing a collection <b>must</b> end with a simple field:</p>
+     * <pre>{@code
+     * // ✅ VALID: traverses collection(s), ends with field
+     * "orders.total"                       // traverses orders, ends with total
+     * "departments.teams.employees.salary" // traverses 3 collections, ends with salary
+     *
+     * // ❌ INVALID: ends with a collection
+     * "orders"                             // no final field
+     * "departments.teams.employees"        // ends with collection
+     * }</pre>
+     *
+     * <h3>Standard Reducers</h3>
+     * <p>The {@link Reduce} interface provides standard reducer constants. Implementations
+     * may support additional custom reducers.</p>
+     *
+     * <h3>Examples</h3>
+     * <pre>{@code
+     * // Simple sum reduction
+     * @Computed(
+     *     dependsOn = {"orders.total"},
+     *     reducers = {Reduce.SUM}
+     * )
+     * private BigDecimal totalOrders;
+     *
+     * // Count elements (must end with a field!)
+     * @Computed(
+     *     dependsOn = {"orders.id"},
+     *     reducers = {Reduce.COUNT}
+     * )
+     * private Long orderCount;
+     *
+     * // Nested collections
+     * @Computed(
+     *     dependsOn = {"departments.teams.employees.salary"},
+     *     reducers = {Reduce.AVG}
+     * )
+     * private BigDecimal avgSalary;
+     *
+     * // Mix of scalars and collections
+     * @Computed(
+     *     dependsOn = {"id", "name", "orders.total", "refunds.amount"},
+     *     reducers = {Reduce.SUM, Reduce.SUM}
+     * )
+     * private String financialSummary;
+     *
+     * // Custom reducer (implementation-specific)
+     * @Computed(
+     *     dependsOn = {"transactions.amount"},
+     *     reducers = {"STDDEV"}
+     * )
+     * private Double standardDeviation;
+     * }</pre>
+     *
+     * @return array of reducer names for collection-traversing dependencies
+     * @since 1.1.0
+     * @see Reduce
+     */
+    String[] reducers() default {};
+
+    /**
+     * Standard reducer constants for aggregating collection values.
+     *
+     * <p>These constants represent common aggregation functions. Implementations
+     * must support at least these standard reducers. Additional custom reducers
+     * may be supported depending on the implementation.</p>
+     *
+     * <h3>Usage</h3>
+     * <pre>{@code
+     * @Computed(
+     *     dependsOn = {"orders.total"},
+     *     reducers = {Computed.Reduce.SUM}
+     * )
+     * private BigDecimal totalOrders;
+     * }</pre>
+     *
+     * @since 1.1.0
+     */
+    interface Reduce {
+        /** Sum of all values in the collection. */
+        String SUM = "SUM";
+
+        /** Average (arithmetic mean) of all values in the collection. */
+        String AVG = "AVG";
+
+        /** Count of elements in the collection. */
+        String COUNT = "COUNT";
+
+        /** Minimum value in the collection. */
+        String MIN = "MIN";
+
+        /** Maximum value in the collection. */
+        String MAX = "MAX";
+
+        /** Count of distinct values in the collection. */
+        String COUNT_DISTINCT = "COUNT_DISTINCT";
+    }
 }

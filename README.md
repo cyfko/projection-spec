@@ -24,6 +24,7 @@ This specification is intended for use by annotation processors, frameworks, or 
   - [@Projected](#projected)
   - [@Computed](#computed)
   - [@MethodReference](#methodreference)
+- [Collection Reducers](#collection-reducers)
 - [How It Works](#how-it-works)
 - [Provider Resolution](#provider-resolution)
 - [Best Practices](#best-practices)
@@ -269,14 +270,111 @@ private String fullName;
     computedBy = @MethodReference(method = "calculateTotal")
 )
 private BigDecimal totalAmount;
+
+// With collection reducer
+@Computed(
+    dependsOn = {"orders.total"},
+    reducers = {Computed.Reduce.SUM}
+)
+private BigDecimal totalOrders;
 ```
 
 | Element | Type | Required | Description |
 |---------|------|----------|-------------|
 | `dependsOn` | `String[]` | ✅ Yes | Source field names (in parameter order) |
 | `computedBy` | `MethodReference` | ❌ No | Explicit method override |
+| `reducers` | `String[]` | ⚠️ Conditional | **Required** for each collection-traversing dependency |
 
 **Important:** The order of fields in `dependsOn` must match the parameter order in the provider method.
+
+#### Collection Reducers
+
+When a dependency path traverses a collection (e.g., `orders.total`), a **reducer** **must** be specified to aggregate multiple values into a single result.
+
+**Standard Reducers (`Computed.Reduce`):**
+
+| Reducer | Description | Example Result Type |
+|---------|-------------|---------------------|
+| `SUM` | Sum of all values | `BigDecimal`, `Long`, etc. |
+| `AVG` | Arithmetic mean | `Double`, `BigDecimal` |
+| `COUNT` | Number of elements | `Long` |
+| `MIN` | Minimum value | Same as field type |
+| `MAX` | Maximum value | Same as field type |
+| `COUNT_DISTINCT` | Distinct value count | `Long` |
+
+**Correspondence Rule:**
+
+Reducers correspond **only** to dependencies that traverse collections, in order:
+
+```java
+@Computed(
+    dependsOn = {"id", "address.city", "orders.total", "orders.quantity"},
+    //          scalar  scalar nested   collection     collection
+    reducers = {Computed.Reduce.SUM, Computed.Reduce.COUNT}
+    //          ↑ orders.total         ↑ orders.quantity
+)
+```
+
+**Path Semantics:**
+
+A dotted path is **not** necessarily a collection:
+- `address.city` → scalar nested (e.g., `@Embedded` or `@ManyToOne`)
+- `orders.total` → collection traversal (e.g., `@OneToMany`)
+
+The distinction depends on your source model and is determined by the implementation.
+
+**Collection Path Rule:**
+
+Paths traversing collections **must** end with a simple field:
+
+```java
+// ✅ VALID
+"orders.total"                       // traverses orders, ends with total
+"departments.teams.employees.salary" // traverses 3 collections
+
+// ❌ INVALID
+"orders"                             // no final field
+"departments.teams.employees"        // ends with collection
+```
+
+**Examples:**
+
+```java
+// Sum of order totals
+@Computed(
+    dependsOn = {"orders.total"},
+    reducers = {Computed.Reduce.SUM}
+)
+private BigDecimal totalRevenue;
+
+// Count orders (use any field, e.g., id)
+@Computed(
+    dependsOn = {"orders.id"},
+    reducers = {Computed.Reduce.COUNT}
+)
+private Long orderCount;
+
+// Average salary across nested collections
+@Computed(
+    dependsOn = {"departments.teams.employees.salary"},
+    reducers = {Computed.Reduce.AVG}
+)
+private BigDecimal avgCompanySalary;
+
+// Multiple reducers
+@Computed(
+    dependsOn = {"orders.total", "refunds.amount"},
+    reducers = {Computed.Reduce.SUM, Computed.Reduce.SUM}
+)
+private String revenueReport;
+
+// Custom reducer (implementation-specific)
+@Computed(
+    dependsOn = {"transactions.amount"},
+    reducers = {"STDDEV"}
+)
+private Double volatility;
+```
 
 ---
 
@@ -300,6 +398,100 @@ private BigDecimal totalAmount;
 |---------|------|----------|-------------|
 | `type` | `Class<?>` | ❌ No | Target provider class |
 | `method` | `String` | ❌ No | Method name (default: `get[FieldName]`) |
+
+---
+
+## Collection Reducers
+
+One of the most powerful features of Projection Spec is the ability to **aggregate values from collections** directly in your DTO declaration.
+
+### The Problem
+
+Consider a `Customer` with multiple `Order`s. Without reducers, calculating aggregates requires:
+1. Fetching all orders
+2. Writing manual aggregation code
+3. Handling null collections, empty results, etc.
+
+### The Solution
+
+With reducers, you declare the aggregation **declaratively**:
+
+```java
+@Projection(from = Customer.class)
+public class CustomerSummaryDTO {
+    
+    private Long id;
+    private String name;
+    
+    // Total revenue from all orders
+    @Computed(
+        dependsOn = {"orders.total"},
+        reducers = {Computed.Reduce.SUM}
+    )
+    private BigDecimal totalRevenue;
+    
+    // Number of orders
+    @Computed(
+        dependsOn = {"orders.id"},
+        reducers = {Computed.Reduce.COUNT}
+    )
+    private Long orderCount;
+    
+    // Average order value
+    @Computed(
+        dependsOn = {"orders.total"},
+        reducers = {Computed.Reduce.AVG}
+    )
+    private BigDecimal averageOrderValue;
+    
+    // Highest single order
+    @Computed(
+        dependsOn = {"orders.total"},
+        reducers = {Computed.Reduce.MAX}
+    )
+    private BigDecimal largestOrder;
+}
+```
+
+### Nested Collection Traversal
+
+Reducers work with **any depth** of collection nesting:
+
+```java
+@Projection(from = Company.class)
+public class CompanyStatsDTO {
+    
+    // Average salary across all departments → teams → employees
+    @Computed(
+        dependsOn = {"departments.teams.employees.salary"},
+        reducers = {Computed.Reduce.AVG}
+    )
+    private BigDecimal avgCompanySalary;
+    
+    // Total headcount
+    @Computed(
+        dependsOn = {"departments.teams.employees.id"},
+        reducers = {Computed.Reduce.COUNT}
+    )
+    private Long totalEmployees;
+}
+```
+
+### Multiple Aggregations
+
+Combine scalar fields with multiple collection aggregations:
+
+```java
+@Computed(
+    dependsOn = {"id", "name", "orders.total", "refunds.amount"},
+    //          scalar  scalar  collection     collection
+    reducers = {Computed.Reduce.SUM, Computed.Reduce.SUM}
+    //          ↑ for orders.total   ↑ for refunds.amount
+)
+private String financialReport;
+```
+
+> **Note:** The implementation determines which paths traverse collections based on your source model. The specification does not limit traversal depth, though implementations may impose limits with explicit error messages.
 
 ---
 
