@@ -4,133 +4,102 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Explicit reference to a computation method, overriding the default
- * convention-based
- * resolution.
+ * References a specific method within a class.
  *
  * <p>
- * By default, {@link Computed} fields resolve their computation method using
- * the
- * naming convention {@code get[FieldName](...)}. This annotation allows
- * overriding
- * that behavior by specifying an explicit method name and/or target provider
- * class.
+ * This annotation provides a flexible way to point to a method by specifying
+ * its name and/or the class containing it. It supports both convention-based
+ * and explicit method resolution.
  * </p>
  *
  * <h2>Resolution Strategy</h2>
  *
  * <table border="1">
- * <caption>How the computation method is resolved based on specified
- * elements</caption>
+ * <caption>How the target method is resolved based on specified elements</caption>
  * <tr>
- * <th>{@code type}</th>
- * <th>{@code method}</th>
- * <th>Resolution</th>
+ *   <th>{@code type}</th>
+ *   <th>{@code value}</th>
+ *   <th>Resolution</th>
  * </tr>
  * <tr>
- * <td>Not set</td>
- * <td>Not set</td>
- * <td>Search all providers for {@code get[FieldName](...)}</td>
+ *   <td>Not set</td>
+ *   <td>Not set</td>
+ *   <td>Use convention-based resolution in the current or default context</td>
  * </tr>
  * <tr>
- * <td>Not set</td>
- * <td>Specified</td>
- * <td>Search all providers for the specified method name</td>
+ *   <td>Not set</td>
+ *   <td>Specified</td>
+ *   <td>Search for the specified method name in the current or default context</td>
  * </tr>
  * <tr>
- * <td>Specified</td>
- * <td>Not set</td>
- * <td>Search only the specified provider for {@code get[FieldName](...)}</td>
+ *   <td>Specified</td>
+ *   <td>Not set</td>
+ *   <td>Use convention-based resolution in the specified class</td>
  * </tr>
  * <tr>
- * <td>Specified</td>
- * <td>Specified</td>
- * <td>Use exactly the specified method in the specified provider</td>
+ *   <td>Specified</td>
+ *   <td>Specified</td>
+ *   <td>Use exactly the specified method in the specified class</td>
  * </tr>
  * </table>
  *
  * <h2>Usage Examples</h2>
  *
- * <h3>Override Method Name</h3>
- * 
+ * <h3>Reference by Method Name Only</h3>
  * <pre>{@code
- * @Computed(dependsOn = { "firstName", "lastName" }, computedBy = @MethodReference(method = "formatDisplayName"))
- * private String fullName;
+ * @Method("processData")
  * }</pre>
  *
- * <h3>Target Specific Provider</h3>
- * 
+ * <h3>Reference by Class Only</h3>
  * <pre>{@code
- * @Computed(dependsOn = { "birthDate" }, computedBy = @MethodReference(type = ModernCalculator.class))
- * private Integer age; // Uses ModernCalculator.getAge(...)
+ * @Method(type = DataProcessor.class)
  * }</pre>
  *
- * <h3>Fully Explicit Reference</h3>
- * 
+ * <h3>Fully Qualified Reference</h3>
  * <pre>{@code
- * @Computed(dependsOn = { "amount",
- *         "currency" }, computedBy = @MethodReference(type = CurrencyUtils.class, method = "convertToUSD"))
- * private BigDecimal amountUSD;
+ * @Method(type = DataProcessor.class, value = "transform")
  * }</pre>
  *
- * <h3>Reuse Generic Methods</h3>
- * 
+ * <h3>Convention-Based (Empty)</h3>
  * <pre>{@code
- * // Same method used for multiple fields
- * @Computed(dependsOn = { "username" }, computedBy = @MethodReference(type = StringUtils.class, method = "uppercase"))
- * private String displayName;
- *
- * @Computed(dependsOn = { "email" }, computedBy = @MethodReference(type = StringUtils.class, method = "lowercase"))
- * private String normalizedEmail;
+ * @Method()  // Uses naming conventions from context
  * }</pre>
  *
  * @since 1.0.0
  * @author Frank KOSSI
- * @see Computed#computedBy()
- * @see Provider
  */
 @Retention(RetentionPolicy.SOURCE)
-public @interface MethodReference {
+public @interface Method {
 
     /**
-     * The provider class containing the target method.
+     * The class containing the target method.
      *
      * <p>
      * When specified, the method search is restricted to this class only.
-     * The class must be registered in {@link Projection#providers()}, otherwise
-     * a compilation error will occur.
      * </p>
      *
      * <p>
-     * When not specified (default {@code void.class}), all registered providers
-     * are searched in declaration order.
+     * When not specified (default {@code void.class}), the resolution depends
+     * on the annotation's usage context.
      * </p>
      *
-     * @return the target provider class, or {@code void.class} to search all
-     *         providers
+     * @return the target class, or {@code void.class} for context-dependent resolution
      */
     Class<?> type() default void.class;
 
     /**
-     * The name of the computation method.
+     * The name of the target method.
      *
      * <p>
-     * When specified, overrides the default naming convention
-     * {@code get[FieldName]}.
+     * When specified, references the method with this exact name.
      * </p>
      *
      * <p>
-     * The method must:
+     * When not specified (empty string), convention-based naming is used
+     * depending on the annotation's usage context.
      * </p>
-     * <ul>
-     * <li>Have parameters matching the {@link Computed#dependsOn()} field types in
-     * order</li>
-     * <li>Return a type compatible with the computed field type</li>
-     * <li>Be static (if provider has no bean) or instance (if provider is a
-     * bean)</li>
-     * </ul>
      *
-     * @return the method name, or empty string to use the default convention
+     * @return the method name, or empty string for convention-based resolution
      */
-    String method() default "";
+    String value() default "";
 }

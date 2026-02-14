@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  * <pre>{@code
  * @Computed(
  *   dependsOn = {"firstName", "lastName"},
- *   computedBy = @MethodReference(method = "buildUserDisplayName")
+ *   computedBy = @Method(method = "buildUserDisplayName")
  * )
  * private String fullName;
  *
@@ -49,13 +49,13 @@ import java.lang.annotation.Target;
  *
  *   @Computed(
  *     dependsOn = {"firstName", "lastName"},
- *     computedBy = @MethodReference(method = "formatFullName")
+ *     computedBy = @Method(method = "formatFullName")
  *   )
  *   private String fullName;  // "John Doe"
  *
  *   @Computed(
  *     dependsOn = {"firstName", "lastName"},
- *     computedBy = @MethodReference(method = "formatFullNameReversed")
+ *     computedBy = @Method(method = "formatFullNameReversed")
  *   )
  *   private String reversedName;  // "Doe, John"
  * }
@@ -76,19 +76,19 @@ import java.lang.annotation.Target;
  * public class OrderDTO {
  *   @Computed(
  *     dependsOn = {"amount", "currency"},
- *     computedBy = @MethodReference(method = "convertToUSD")
+ *     computedBy = @Method(method = "convertToUSD")
  *   )
  *   private BigDecimal amountInUSD;
  *
  *   @Computed(
  *     dependsOn = {"taxes", "currency"},
- *     computedBy = @MethodReference(method = "convertToUSD")
+ *     computedBy = @Method(method = "convertToUSD")
  *   )
  *   private BigDecimal taxesInUSD;
  *
  *   @Computed(
  *     dependsOn = {"shipping", "currency"},
- *     computedBy = @MethodReference(method = "convertToUSD")
+ *     computedBy = @Method(method = "convertToUSD")
  *   )
  *   private BigDecimal shippingInUSD;
  * }
@@ -118,7 +118,7 @@ import java.lang.annotation.Target;
  *   // With override: explicitly targets the correct provider
  *   @Computed(
  *     dependsOn = {"birthDate"},
- *     computedBy = @MethodReference(
+ *     computedBy = @Method(
  *       type = ModernComputations.class,
  *       method = "getAge"
  *     )
@@ -142,7 +142,7 @@ import java.lang.annotation.Target;
  * public class UserDTO {
  *   @Computed(
  *     dependsOn = {"username"},
- *     computedBy = @MethodReference(
+ *     computedBy = @Method(
  *       type = StringUtils.class,
  *       method = "uppercase"
  *     )
@@ -151,7 +151,7 @@ import java.lang.annotation.Target;
  *
  *   @Computed(
  *     dependsOn = {"email"},
- *     computedBy = @MethodReference(
+ *     computedBy = @Method(
  *       type = StringUtils.class,
  *       method = "lowercase"
  *     )
@@ -232,7 +232,7 @@ import java.lang.annotation.Target;
  * public class UserDTO {
  *   @Computed(
  *     dependsOn = {"firstName", "lastName"},
- *     computedBy = @MethodReference(method = "formatUserName")
+ *     computedBy = @Method(method = "formatUserName")
  *   )
  *   private String fullName;  // Looks for: formatUserName(String, String)
  * }
@@ -250,7 +250,7 @@ import java.lang.annotation.Target;
  * public class UserDTO {
  *   @Computed(
  *     dependsOn = {"birthDate"},
- *     computedBy = @MethodReference(
+ *     computedBy = @Method(
  *       type = ModernUtils.class,
  *       method = "calculateAge"
  *     )
@@ -268,13 +268,13 @@ import java.lang.annotation.Target;
  * public class ProductDTO {
  *   @Computed(
  *     dependsOn = {"name"},
- *     computedBy = @MethodReference(method = "uppercase")
+ *     computedBy = @Method(method = "uppercase")
  *   )
  *   private String displayName;
  *
  *   @Computed(
  *     dependsOn = {"category"},
- *     computedBy = @MethodReference(method = "uppercase")
+ *     computedBy = @Method(method = "uppercase")
  *   )
  *   private String displayCategory;
  * }
@@ -324,7 +324,7 @@ import java.lang.annotation.Target;
  * @see Projection
  * @see Provider
  * @see Projected
- * @see MethodReference
+ * @see Method
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.FIELD)
@@ -412,15 +412,15 @@ public @interface Computed {
      *     <td>Search all providers for {@code get[FieldName]}</td>
      *   </tr>
      *   <tr>
-     *     <td>{@code @MethodReference(method = "myMethod")}</td>
+     *     <td>{@code @Method(method = "myMethod")}</td>
      *     <td>Search all providers for {@code myMethod}</td>
      *   </tr>
      *   <tr>
-     *     <td>{@code @MethodReference(type = MyProvider.class)}</td>
+     *     <td>{@code @Method(type = MyProvider.class)}</td>
      *     <td>Search only {@code MyProvider} for {@code get[FieldName]}</td>
      *   </tr>
      *   <tr>
-     *     <td>{@code @MethodReference(type = MyProvider.class, method = "myMethod")}</td>
+     *     <td>{@code @Method(type = MyProvider.class, method = "myMethod")}</td>
      *     <td>Search only {@code MyProvider.myMethod}</td>
      *   </tr>
      * </table>
@@ -430,21 +430,21 @@ public @interface Computed {
      * // Override method name only
      * @Computed(
      *   dependsOn = {"firstName", "lastName"},
-     *   computedBy = @MethodReference(method = "buildDisplayName")
+     *   computedBy = @Method(method = "buildDisplayName")
      * )
      * private String fullName;
      *
      * // Target specific provider
      * @Computed(
      *   dependsOn = {"amount"},
-     *   computedBy = @MethodReference(type = ModernCalculator.class)
+     *   computedBy = @Method(type = ModernCalculator.class)
      * )
      * private BigDecimal total;  // Uses ModernCalculator.getTotal(...)
      *
      * // Both type and method
      * @Computed(
      *   dependsOn = {"value"},
-     *   computedBy = @MethodReference(
+     *   computedBy = @Method(
      *     type = StringUtils.class,
      *     method = "uppercase"
      *   )
@@ -455,7 +455,7 @@ public @interface Computed {
      * @return method reference for explicit computation method resolution
      * @since 1.1.0
      */
-    MethodReference computedBy() default @MethodReference;
+    Method computedBy() default @Method;
 
     /**
      * Array of reducer functions to apply to dependencies that traverse collections.

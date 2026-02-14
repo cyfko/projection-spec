@@ -23,7 +23,7 @@ This specification is intended for use by annotation processors, frameworks, or 
   - [@Provider](#provider)
   - [@Projected](#projected)
   - [@Computed](#computed)
-  - [@MethodReference](#methodreference)
+  - [@Method](#methodreference)
 - [Collection Reducers](#collection-reducers)
 - [How It Works](#how-it-works)
 - [Provider Resolution](#provider-resolution)
@@ -40,7 +40,7 @@ This specification is intended for use by annotation processors, frameworks, or 
 <dependency>
     <groupId>io.github.cyfko</groupId>
     <artifactId>projection-spec</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
@@ -100,7 +100,7 @@ The projection system is built around five core annotations that work together:
                                                │
                                                ▼
                                     ┌─────────────────────┐
-                                    │  @MethodReference   │
+                                    │  @Method   │
                                     │ (optional override) │
                                     └─────────────────────┘
 ```
@@ -108,7 +108,7 @@ The projection system is built around five core annotations that work together:
 **Flow:**
 1. `@Projection` declares the source class and computation providers
 2. Fields use `@Projected` for direct mapping or `@Computed` for derived values
-3. `@MethodReference` optionally overrides method resolution for computed fields
+3. `@Method` optionally overrides method resolution for computed fields
 
 ---
 
@@ -267,7 +267,7 @@ private String fullName;
 // With explicit method reference
 @Computed(
     dependsOn = {"price", "quantity"},
-    computedBy = @MethodReference(method = "calculateTotal")
+    computedBy = @Method(method = "calculateTotal")
 )
 private BigDecimal totalAmount;
 
@@ -282,7 +282,7 @@ private BigDecimal totalOrders;
 | Element | Type | Required | Description |
 |---------|------|----------|-------------|
 | `dependsOn` | `String[]` | ✅ Yes | Source field names (in parameter order) |
-| `computedBy` | `MethodReference` | ❌ No | Explicit method override |
+| `computedBy` | `Method` | ❌ No | Explicit method override |
 | `reducers` | `String[]` | ⚠️ Conditional | **Required** for each collection-traversing dependency |
 
 **Important:** The order of fields in `dependsOn` must match the parameter order in the provider method.
@@ -378,20 +378,20 @@ private Double volatility;
 
 ---
 
-### @MethodReference
+### @Method
 
 **Target:** Nested in `@Computed.computedBy`  
 **Purpose:** Overrides default method resolution
 
 ```java
 // Override method name only
-@MethodReference(method = "formatDisplayName")
+@Method(method = "formatDisplayName")
 
 // Target specific provider
-@MethodReference(type = CurrencyUtils.class)
+@Method(type = CurrencyUtils.class)
 
 // Fully explicit
-@MethodReference(type = StringUtils.class, method = "uppercase")
+@Method(type = StringUtils.class, method = "uppercase")
 ```
 
 | Element | Type | Required | Description |
@@ -520,16 +520,16 @@ Each DTO field is classified into one of three categories:
 When resolving a computation method, the processor follows this algorithm:
 
 ```
-1. If @MethodReference specifies both type and method:
+1. If @Method specifies both type and method:
    └─> Use exactly that method in that provider
 
-2. If @MethodReference specifies only method:
+2. If @Method specifies only method:
    └─> Search all providers for that method name
 
-3. If @MethodReference specifies only type:
+3. If @Method specifies only type:
    └─> Search that provider for get[FieldName]
 
-4. If no @MethodReference (default):
+4. If no @Method (default):
    └─> Search all providers for get[FieldName]
 ```
 
@@ -608,13 +608,13 @@ public class OrderDTO {
 )
 ```
 
-### 2. Use Explicit @MethodReference When Ambiguous
+### 2. Use Explicit @Method When Ambiguous
 
 ```java
 // If multiple providers have getAge(), be explicit:
 @Computed(
     dependsOn = {"birthDate"},
-    computedBy = @MethodReference(type = ModernDateUtils.class)
+    computedBy = @Method(type = ModernDateUtils.class)
 )
 private Integer age;
 ```

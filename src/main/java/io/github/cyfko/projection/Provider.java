@@ -92,7 +92,7 @@ import java.lang.annotation.Target;
  * @author Frank KOSSI
  * @see Projection#providers()
  * @see Computed
- * @see MethodReference
+ * @see Method
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({}) // Only usable within @Projection
@@ -107,7 +107,7 @@ public @interface Provider {
      * </p>
      * <ul>
      * <li>Methods matching {@code get[FieldName](...)} for computed fields</li>
-     * <li>Methods explicitly referenced via {@link MethodReference}</li>
+     * <li>Methods explicitly referenced via {@link Method}</li>
      * </ul>
      *
      * @return the provider class
