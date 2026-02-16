@@ -16,7 +16,8 @@ import java.lang.annotation.Target;
  * code reuse and usage of dependencies on the resolution method side.</p>
  *
  * <p><b>Important:</b> It is to the implementation to defines whether this annotation apply both on fields and methods
- * or to choose one side between them.</p>
+ * or to choose one side between them. The exemple shown below depict usage of this annotation on either fields or
+ * methods. But keep in mind that it is specific to implementation whether one is allowed or not.</p>
  *
  * <h2>Method Resolution</h2>
  * <p>The computation method dependencies types are infered from the source {@link Projection#from()} of the projection.</p>

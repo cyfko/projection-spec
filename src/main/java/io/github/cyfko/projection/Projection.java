@@ -48,32 +48,32 @@ import java.lang.annotation.Target;
  *             @Provider(UserComputations.class),
  *             @Provider(value = DateFormatter.class, bean = "isoDateFormatter")
  *     })
- *     public class UserDTO {
+ *     public interface UserDTO {
  *         @Projected(from = "email")
- *         private String emailAddress;
+ *         String getEmailAddress();
  *
  *         // Implicitly mapped by name matching
- *         private String firstName;
- *         private String lastName;
+ *         String getFirstName();
+ *         String getLastName();
  *
  *         @Computed(dependsOn = { "firstName", "lastName" })
- *         private String fullName;
+ *         String getFullName();
  *
  *         @Computed(dependsOn = { "createdAt" })
- *         private String formattedDate;
+ *         String getFormattedDate();
  *     }
  *
  *     // Static provider
  *     public class UserComputations {
- *         public static String getFullName(String firstName, String lastName) {
+ *         public static String toFullName(String firstName, String lastName) {
  *             return firstName + " " + lastName;
  *         }
  *     }
  *
- *     // Bean-based provider (Spring example)
+ *     // Bean-based provider (Hypothetic framework example)
  *     @Service("isoDateFormatter")
  *     public class DateFormatter {
- *         public String getFormattedDate(LocalDateTime createdAt) {
+ *         public String toFormattedDate(LocalDateTime createdAt) {
  *             return createdAt.format(DateTimeFormatter.ISO_DATE);
  *         }
  *     }
@@ -83,11 +83,11 @@ import java.lang.annotation.Target;
  * <h2>Provider Resolution Strategy</h2>
  * <p>
  * When resolving a computed field, the system searches for a matching method
- * across
- * all registered providers in declaration order:
+ * across all registered providers in declaration order:
  * </p>
  * <ol>
- * <li>Method name must follow the convention: {@code get[FieldName](...)}</li>
+ * <li>Method name must follow the convention: {@code to[FieldName](...)} if the {@link Computed} side does not
+ *   explicitly reference them via {@link Computed#computedBy()} property</li>
  * <li>Method parameters must match the types of the {@code dependsOn}
  * fields</li>
  * <li>The first matching method found is used (first-match-wins strategy)</li>

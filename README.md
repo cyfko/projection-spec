@@ -46,12 +46,12 @@ This specification is intended for use by annotation processors, frameworks, or 
 
 **Gradle (Kotlin DSL):**
 ```kotlin
-implementation("io.github.cyfko:projection-spec:1.0.0")
+implementation("io.github.cyfko:projection-spec:2.0.0")
 ```
 
 **Gradle (Groovy):**
 ```groovy
-implementation 'io.github.cyfko:projection-spec:1.0.0'
+implementation 'io.github.cyfko:projection-spec:2.0.0'
 ```
 
 > **Note:** This library provides only annotations with `SOURCE` retention. You will need an annotation processor that implements the projection logic.
@@ -141,23 +141,23 @@ public class User {
     from = User.class,
     providers = { @Provider(UserComputations.class) }
 )
-public class UserDTO {
+public interface UserDTO {
     
     // Direct mapping: same name as source field
-    private Long id;
-    private String email;
+    Long getId();
+    String getEmail();
     
     // Renamed mapping: different name in DTO
     @Projected(from = "createdAt")
-    private LocalDateTime registrationDate;
+    LocalDateTime getRegistrationDate();
     
     // Nested path: access related object fields
     @Projected(from = "department.name")
-    private String departmentName;
+    String getDepartmentName();
     
     // Computed field: derived from multiple source fields
     @Computed(dependsOn = {"firstName", "lastName"})
-    private String fullName;
+    String getFullName();
 }
 ```
 
@@ -167,10 +167,10 @@ public class UserDTO {
 public class UserComputations {
     
     /**
-     * Method naming convention: get[FieldName]
+     * Method naming convention: to[FieldName]
      * Parameters must match dependsOn order and types
      */
-    public static String getFullName(String firstName, String lastName) {
+    public static String toFullName(String firstName, String lastName) {
         if (firstName == null && lastName == null) {
             return null;
         }
@@ -196,13 +196,13 @@ public class UserComputations {
     from = User.class,                              // Required: source class
     providers = { @Provider(UserComputations.class) } // Optional: computation providers
 )
-public class UserDTO { ... }
+public interface UserDTO { ... }
 ```
 
-| Element | Type | Required | Description |
-|---------|------|----------|-------------|
-| `from` | `Class<?>` | ✅ Yes | The source class to project from |
-| `providers` | `Provider[]` | ❌ No | Array of provider classes for computed fields |
+| Element | Type | Required | Description                                             |
+|---------|------|----------|---------------------------------------------------------|
+| `from` | `Class<?>` | ✅ Yes | The source class to project from                        |
+| `providers` | `Provider[]` | ❌ No | Array of provider classes for computed fields resolvers |
 
 ---
 
@@ -236,21 +236,19 @@ public class UserDTO { ... }
 ```java
 // Simple renaming
 @Projected(from = "createdAt")
-private LocalDateTime registrationDate;
+LocalDateTime getRegistrationDate();
 
 // Nested path (traversing object graphs)
 @Projected(from = "department.manager.email")
-private String managerEmail;
+String getManagerEmail();
 ```
 
 | Element | Type | Required | Description |
 |---------|------|----------|-------------|
 | `from` | `String` | ✅ Yes | Source field path (supports dot notation) |
 
-**Implicit Mapping:** Fields without `@Projected` or `@Computed` are implicitly mapped by name:
-```java
-private String email;  // Automatically maps to source.getEmail()
-```
+**Implicit Mapping:** Fields/Methods without `@Projected` or `@Computed` are implicitly mapped by name based on Java
+Naming convention.
 
 ---
 
@@ -262,21 +260,21 @@ private String email;  // Automatically maps to source.getEmail()
 ```java
 // Simple computation
 @Computed(dependsOn = {"firstName", "lastName"})
-private String fullName;
+String getFullName();
 
 // With explicit method reference
 @Computed(
     dependsOn = {"price", "quantity"},
     computedBy = @Method(method = "calculateTotal")
 )
-private BigDecimal totalAmount;
+BigDecimal getTotalAmount();
 
 // With collection reducer
 @Computed(
     dependsOn = {"orders.total"},
     reducers = {Computed.Reduce.SUM}
 )
-private BigDecimal totalOrders;
+BigDecimal getTotalOrders();
 ```
 
 | Element | Type | Required | Description |
@@ -345,35 +343,35 @@ Paths traversing collections **must** end with a simple field:
     dependsOn = {"orders.total"},
     reducers = {Computed.Reduce.SUM}
 )
-private BigDecimal totalRevenue;
+BigDecimal getTotalRevenue();
 
 // Count orders (use any field, e.g., id)
 @Computed(
     dependsOn = {"orders.id"},
     reducers = {Computed.Reduce.COUNT}
 )
-private Long orderCount;
+Long getOrderCount();
 
 // Average salary across nested collections
 @Computed(
     dependsOn = {"departments.teams.employees.salary"},
     reducers = {Computed.Reduce.AVG}
 )
-private BigDecimal avgCompanySalary;
+BigDecimal getAvgCompanySalary();
 
 // Multiple reducers
 @Computed(
     dependsOn = {"orders.total", "refunds.amount"},
     reducers = {Computed.Reduce.SUM, Computed.Reduce.SUM}
 )
-private String revenueReport;
+String getRevenueReport();
 
 // Custom reducer (implementation-specific)
 @Computed(
     dependsOn = {"transactions.amount"},
     reducers = {"STDDEV"}
 )
-private Double volatility;
+Double getVolatility();
 ```
 
 ---
@@ -418,38 +416,38 @@ With reducers, you declare the aggregation **declaratively**:
 
 ```java
 @Projection(from = Customer.class)
-public class CustomerSummaryDTO {
+public interface CustomerSummaryDTO {
     
-    private Long id;
-    private String name;
+    Long getId();
+    String getName();
     
     // Total revenue from all orders
     @Computed(
         dependsOn = {"orders.total"},
         reducers = {Computed.Reduce.SUM}
     )
-    private BigDecimal totalRevenue;
+    BigDecimal getTotalRevenue();
     
     // Number of orders
     @Computed(
         dependsOn = {"orders.id"},
         reducers = {Computed.Reduce.COUNT}
     )
-    private Long orderCount;
+    Long getOrderCount();
     
     // Average order value
     @Computed(
         dependsOn = {"orders.total"},
         reducers = {Computed.Reduce.AVG}
     )
-    private BigDecimal averageOrderValue;
+    BigDecimal getAverageOrderValue();
     
     // Highest single order
     @Computed(
         dependsOn = {"orders.total"},
         reducers = {Computed.Reduce.MAX}
     )
-    private BigDecimal largestOrder;
+    BigDecimal getLargestOrder();
 }
 ```
 
@@ -459,21 +457,21 @@ Reducers work with **any depth** of collection nesting:
 
 ```java
 @Projection(from = Company.class)
-public class CompanyStatsDTO {
+public interface CompanyStatsDTO {
     
     // Average salary across all departments → teams → employees
     @Computed(
         dependsOn = {"departments.teams.employees.salary"},
         reducers = {Computed.Reduce.AVG}
     )
-    private BigDecimal avgCompanySalary;
+    BigDecimal getAvgCompanySalary();
     
     // Total headcount
     @Computed(
         dependsOn = {"departments.teams.employees.id"},
         reducers = {Computed.Reduce.COUNT}
     )
-    private Long totalEmployees;
+    Long getTotalEmployees();
 }
 ```
 
@@ -488,7 +486,7 @@ Combine scalar fields with multiple collection aggregations:
     reducers = {Computed.Reduce.SUM, Computed.Reduce.SUM}
     //          ↑ for orders.total   ↑ for refunds.amount
 )
-private String financialReport;
+String getFinancialReport();
 ```
 
 > **Note:** The implementation determines which paths traverse collections based on your source model. The specification does not limit traversal depth, though implementations may impose limits with explicit error messages.
@@ -561,7 +559,7 @@ public class StringUtils {
 }
 ```
 
-### Example: Bean-Based Provider (Spring)
+### Example: Bean-Based Provider (Framework-specific)
 
 ```java
 @Service("currencyConverter")
@@ -573,7 +571,7 @@ public class CurrencyConverter {
         this.exchangeRateService = exchangeRateService;
     }
     
-    public BigDecimal convertToUSD(BigDecimal amount, String currency) {
+    public BigDecimal toAmountInUSD(BigDecimal amount, String currency) {
         BigDecimal rate = exchangeRateService.getRate(currency, "USD");
         return amount.multiply(rate);
     }
@@ -585,10 +583,10 @@ public class CurrencyConverter {
     from = Order.class,
     providers = { @Provider(value = CurrencyConverter.class, bean = "currencyConverter") }
 )
-public class OrderDTO {
+public interface OrderDTO {
     
     @Computed(dependsOn = {"amount", "currency"})
-    private BigDecimal amountInUSD;
+    BigDecimal getAmountInUSD();
 }
 ```
 
@@ -611,12 +609,12 @@ public class OrderDTO {
 ### 2. Use Explicit @Method When Ambiguous
 
 ```java
-// If multiple providers have getAge(), be explicit:
+// If multiple providers have toAge(..), be explicit:
 @Computed(
     dependsOn = {"birthDate"},
     computedBy = @Method(type = ModernDateUtils.class)
 )
-private Integer age;
+Integer getAge();
 ```
 
 ### 3. Keep Computed Fields Simple
@@ -624,7 +622,7 @@ private Integer age;
 ```java
 // ✅ Good: Each computed field has clear dependencies
 @Computed(dependsOn = {"firstName", "lastName"})
-private String fullName;
+String getFullName();
 
 // ❌ Avoid: Don't try to chain computed fields
 // (computed-to-computed dependencies are not supported)
@@ -642,7 +640,7 @@ public class OrderComputations {
      * @param taxRate  Tax rate as decimal (e.g., 0.20 for 20%)
      * @return Total amount including tax
      */
-    public static BigDecimal getTotal(BigDecimal subtotal, BigDecimal taxRate) {
+    public static BigDecimal toTotal(BigDecimal subtotal, BigDecimal taxRate) {
         return subtotal.multiply(BigDecimal.ONE.add(taxRate));
     }
 }
@@ -676,11 +674,11 @@ public class OrderComputations {
 ```java
 // @Projected: Direct mapping with renaming
 @Projected(from = "createdAt")
-private LocalDateTime registrationDate;
+LocalDateTime getRegistrationDate();
 
 // @Computed: Derived from multiple fields
 @Computed(dependsOn = {"price", "quantity"})
-private BigDecimal lineTotal;
+BigDecimal getLineTotal();
 ```
 
 ---

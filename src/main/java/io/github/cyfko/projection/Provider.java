@@ -25,13 +25,13 @@ import java.lang.annotation.Target;
  * 
  * <pre>{@code
  *     @Projection(from = User.class, providers = { @Provider(UserComputations.class) })
- *     public class UserDTO {
+ *     public interface UserDTO {
  *         @Computed(dependsOn = { "firstName", "lastName" })
- *         private String fullName;
+ *         String getFullName();
  *     }
  *
  *     public class UserComputations {
- *         public static String getFullName(String firstName, String lastName) {
+ *         public static String toFullName(String firstName, String lastName) {
  *             return firstName + " " + lastName;
  *         }
  *     }
@@ -52,12 +52,12 @@ import java.lang.annotation.Target;
  * )
  * public class UserDTO {
  *     @Computed(dependsOn = { "createdAt" })
- *     private String formattedDate;
+ *     String getFormattedDate();
  * }
  *
  * @Service("isoDateFormatter")
  * public class DateFormatter {
- *     public String getFormattedDate(LocalDateTime createdAt) {
+ *     public String toFormattedDate(LocalDateTime createdAt) {
  *         return createdAt.format(DateTimeFormatter.ISO_DATE);
  *     }
  * }
