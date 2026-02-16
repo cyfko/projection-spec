@@ -8,6 +8,9 @@ import java.lang.annotation.Target;
 /**
  * Marks a DTO field as directly projected from a corresponding source field.
  *
+ * <p><b>Important:</b> It is to the implementation to defines whether this annotation apply both on fields and methods
+ * or to choose one side between them.</p>
+ *
  * <p>
  * This annotation establishes a straightforward mapping between a source field
  * and
@@ -31,12 +34,12 @@ import java.lang.annotation.Target;
  * }
  *
  * @Projection(from = User.class)
- * public class UserDTO {
+ * public interface UserDTO {
  *     // Maps to User.email (same name)
- *     private String email;
+ *     public String getEmail();
  *
  *     // Maps to User.phoneNumber (same name)
- *     private String phoneNumber;
+ *     public String getPhoneNumber();
  * }
  * }</pre>
  *
@@ -51,10 +54,10 @@ import java.lang.annotation.Target;
  *     @Projection(from = User.class)
  *     public class UserDTO {
  *         @Projected(from = "email") // DTO field has different name
- *         private String emailAddress;
+ *         public String getEmailAddress();
  *
  *         @Projected(from = "createdAt") // DTO field has different name
- *         private LocalDateTime registrationDate;
+ *         private LocalDateTime getRegistrationDate();
  *     }
  * }
  * </pre>
@@ -167,7 +170,7 @@ import java.lang.annotation.Target;
  * @see Computed
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.FIELD)
+@Target({ElementType.METHOD, ElementType.FIELD})
 public @interface Projected {
 
     /**

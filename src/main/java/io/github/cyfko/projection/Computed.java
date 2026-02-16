@@ -6,31 +6,41 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a DTO field as a computed field whose value is derived from one or more
+ * Marks a DTO method as a computed field whose value is derived from one or more
  * source fields through a computation method.
  *
+ * <h2>Design Rationale</h2>
+ * <p>The annotated method (a.k.a the <b>informative method</b>) itself <b>SHOULD NOT</b> expect parameters. The annotated
+ * method is considered as the expected outcome, not the computation itself. The computation resolution mechanism
+ * (a.k.a <b>the resolution method</b>) should be deferred to another method. This design add more flexibility and allow
+ * code reuse and usage of dependencies on the resolution method side.</p>
+ *
+ * <p><b>Important:</b> It is to the implementation to defines whether this annotation apply both on fields and methods
+ * or to choose one side between them.</p>
+ *
  * <h2>Method Resolution</h2>
+ * <p>The computation method dependencies types are infered from the source {@link Projection#from()} of the projection.</p>
  * <p>The computation method can be resolved in two ways:</p>
  *
- * <h3>1. Convention-based (default)</h3>
- * <p>By default, the system searches for a method named {@code get[FieldName]}:</p>
+ * <h3>1 Convention-based (default)</h3>
+ * <p>By default, the system searches for a resolution method named {@code to[FullName]}:</p>
  * <pre>{@code
  * @Computed(dependsOn = {"firstName", "lastName"})
- * private String fullName;
+ * public String getFullName();
  *
- * // Automatically looks for: getFullName(String, String)
+ * // Automatically looks for: public String toFullName(String firstName, String lastName)
  * }</pre>
  *
  * <h3>2. Explicit method reference (override)</h3>
  * <p>Use {@link #computedBy()} to explicitly specify which method to use:</p>
  * <pre>{@code
  * @Computed(
- *   dependsOn = {"firstName", "lastName"},
- *   computedBy = @Method(method = "buildUserDisplayName")
+ *   dependsOn = {"warehouse", "line", "itemId"},
+ *   computedBy = @Method(method = "buildProductReference")
  * )
- * private String fullName;
+ * public String getProductReference();
  *
- * // Explicitly uses: buildUserDisplayName(String, String)
+ * // Explicitly uses: String buildProductReference(String warehouse, int line, UUID itemId)
  * }</pre>
  *
  * <h3>Resolution Order</h3>
@@ -51,13 +61,13 @@ import java.lang.annotation.Target;
  *     dependsOn = {"firstName", "lastName"},
  *     computedBy = @Method(method = "formatFullName")
  *   )
- *   private String fullName;  // "John Doe"
+ *   public String getFullName();  // "John Doe"
  *
  *   @Computed(
  *     dependsOn = {"firstName", "lastName"},
  *     computedBy = @Method(method = "formatFullNameReversed")
  *   )
- *   private String reversedName;  // "Doe, John"
+ *   public String getReversedName();  // "Doe, John"
  * }
  *
  * public class UserComputations {
@@ -78,19 +88,19 @@ import java.lang.annotation.Target;
  *     dependsOn = {"amount", "currency"},
  *     computedBy = @Method(method = "convertToUSD")
  *   )
- *   private BigDecimal amountInUSD;
+ *   public BigDecimal amountInUSD;
  *
  *   @Computed(
  *     dependsOn = {"taxes", "currency"},
  *     computedBy = @Method(method = "convertToUSD")
  *   )
- *   private BigDecimal taxesInUSD;
+ *   public BigDecimal taxesInUSD;
  *
  *   @Computed(
  *     dependsOn = {"shipping", "currency"},
  *     computedBy = @Method(method = "convertToUSD")
  *   )
- *   private BigDecimal shippingInUSD;
+ *   public BigDecimal shippingInUSD;
  * }
  *
  * public class CurrencyUtils {
@@ -113,7 +123,7 @@ import java.lang.annotation.Target;
  * public class UserDTO {
  *   // Without override: might use wrong provider (first match)
  *   @Computed(dependsOn = {"birthDate"})
- *   private Integer age;  // Could accidentally use LegacyComputations.getAge()!
+ *   public Integer age;  // Could accidentally use LegacyComputations.getAge()!
  *
  *   // With override: explicitly targets the correct provider
  *   @Computed(
@@ -123,7 +133,7 @@ import java.lang.annotation.Target;
  *       method = "getAge"
  *     )
  *   )
- *   private Integer age;  // Guaranteed to use ModernComputations.getAge()
+ *   public Integer age;  // Guaranteed to use ModernComputations.getAge()
  * }
  * }</pre>
  *
@@ -147,7 +157,7 @@ import java.lang.annotation.Target;
  *       method = "uppercase"
  *     )
  *   )
- *   private String displayName;
+ *   public String displayName;
  *
  *   @Computed(
  *     dependsOn = {"email"},
@@ -156,7 +166,7 @@ import java.lang.annotation.Target;
  *       method = "lowercase"
  *     )
  *   )
- *   private String normalizedEmail;
+ *   public String normalizedEmail;
  * }
  * }</pre>
  *
@@ -173,7 +183,7 @@ import java.lang.annotation.Target;
  *     <td>❌ No</td>
  *     <td>N/A</td>
  *     <td>N/A</td>
- *     <td>Search all providers for {@code get[FieldName](...)}</td>
+ *     <td>Search all providers for {@code to[FieldName](...)}</td>
  *   </tr>
  *   <tr>
  *     <td>✅ Yes</td>
@@ -191,7 +201,7 @@ import java.lang.annotation.Target;
  *     <td>✅ Yes</td>
  *     <td>✅ Yes</td>
  *     <td>❌ No</td>
- *     <td>Search only specified provider for {@code get[FieldName](...)}</td>
+ *     <td>Search only specified provider for {@code to[FieldName](...)}</td>
  *   </tr>
  *   <tr>
  *     <td>✅ Yes</td>
@@ -219,7 +229,7 @@ import java.lang.annotation.Target;
  * )
  * public class UserDTO {
  *   @Computed(dependsOn = {"firstName", "lastName"})
- *   private String fullName;  // Looks for: getFullName(String, String)
+ *   public String fullName;  // Looks for: getFullName(String, String)
  * }
  * }</pre>
  *
@@ -234,7 +244,7 @@ import java.lang.annotation.Target;
  *     dependsOn = {"firstName", "lastName"},
  *     computedBy = @Method(method = "formatUserName")
  *   )
- *   private String fullName;  // Looks for: formatUserName(String, String)
+ *   public String fullName;  // Looks for: formatUserName(String, String)
  * }
  * }</pre>
  *
@@ -255,7 +265,7 @@ import java.lang.annotation.Target;
  *       method = "calculateAge"
  *     )
  *   )
- *   private Integer age;  // Only searches in ModernUtils.calculateAge(LocalDate)
+ *   public Integer getAge();  // Only searches in ModernUtils.calculateAge(LocalDate)
  * }
  * }</pre>
  *
@@ -270,13 +280,13 @@ import java.lang.annotation.Target;
  *     dependsOn = {"name"},
  *     computedBy = @Method(method = "uppercase")
  *   )
- *   private String displayName;
+ *   public String getDisplayName();
  *
  *   @Computed(
  *     dependsOn = {"category"},
  *     computedBy = @Method(method = "uppercase")
  *   )
- *   private String displayCategory;
+ *   public String getDisplayCategory();
  * }
  *
  * public class FormatUtils {
@@ -327,8 +337,9 @@ import java.lang.annotation.Target;
  * @see Method
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.FIELD)
+@Target({ElementType.METHOD, ElementType.FIELD})
 public @interface Computed {
+
     /**
      * Array of source field names that this computed field depends on.
      *
@@ -347,7 +358,7 @@ public @interface Computed {
      * <p>The order of field names must match the parameter order in the provider method:</p>
      * <pre>{@code
      * @Computed(dependsOn = {"firstName", "lastName"})  // Order: firstName, then lastName
-     * private String fullName;
+     * String getFullName();
      *
      * // Correct method signature
      * public static String getFullName(String firstName, String lastName) { ... }
@@ -373,15 +384,15 @@ public @interface Computed {
      * <pre>{@code
      * // Simple dependency
      * @Computed(dependsOn = {"createdAt"})
-     * private String formattedDate;
+     * public String formattedDate;
      *
      * // Multiple dependencies
      * @Computed(dependsOn = {"firstName", "lastName", "middleName"})
-     * private String fullNameWithMiddle;
+     * public String fullNameWithMiddle;
      *
      * // Nested source field access (assuming User has Address relationship)
      * @Computed(dependsOn = {"address.city", "address.country"})
-     * private String location;
+     * public String location;
      * }</pre>
      *
      * @return array of source field paths that this computed field requires
@@ -432,14 +443,14 @@ public @interface Computed {
      *   dependsOn = {"firstName", "lastName"},
      *   computedBy = @Method(method = "buildDisplayName")
      * )
-     * private String fullName;
+     * public String fullName;
      *
      * // Target specific provider
      * @Computed(
      *   dependsOn = {"amount"},
      *   computedBy = @Method(type = ModernCalculator.class)
      * )
-     * private BigDecimal total;  // Uses ModernCalculator.getTotal(...)
+     * public BigDecimal total;  // Uses ModernCalculator.getTotal(...)
      *
      * // Both type and method
      * @Computed(
@@ -449,7 +460,7 @@ public @interface Computed {
      *     method = "uppercase"
      *   )
      * )
-     * private String normalized;
+     * public String normalized;
      * }</pre>
      *
      * @return method reference for explicit computation method resolution
@@ -508,35 +519,35 @@ public @interface Computed {
      *     dependsOn = {"orders.total"},
      *     reducers = {Reduce.SUM}
      * )
-     * private BigDecimal totalOrders;
+     * public BigDecimal totalOrders;
      *
      * // Count elements (must end with a field!)
      * @Computed(
      *     dependsOn = {"orders.id"},
      *     reducers = {Reduce.COUNT}
      * )
-     * private Long orderCount;
+     * public Long orderCount;
      *
      * // Nested collections
      * @Computed(
      *     dependsOn = {"departments.teams.employees.salary"},
      *     reducers = {Reduce.AVG}
      * )
-     * private BigDecimal avgSalary;
+     * public BigDecimal avgSalary;
      *
      * // Mix of scalars and collections
      * @Computed(
      *     dependsOn = {"id", "name", "orders.total", "refunds.amount"},
      *     reducers = {Reduce.SUM, Reduce.SUM}
      * )
-     * private String financialSummary;
+     * public String financialSummary;
      *
      * // Custom reducer (implementation-specific)
      * @Computed(
      *     dependsOn = {"transactions.amount"},
      *     reducers = {"STDDEV"}
      * )
-     * private Double standardDeviation;
+     * public Double standardDeviation;
      * }</pre>
      *
      * @return array of reducer names for collection-traversing dependencies
@@ -558,7 +569,7 @@ public @interface Computed {
      *     dependsOn = {"orders.total"},
      *     reducers = {Computed.Reduce.SUM}
      * )
-     * private BigDecimal totalOrders;
+     * public BigDecimal totalOrders;
      * }</pre>
      *
      * @since 1.1.0
