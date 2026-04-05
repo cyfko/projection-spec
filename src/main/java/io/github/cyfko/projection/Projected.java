@@ -271,6 +271,19 @@ public @interface Projected {
      * <p>If empty, defaults to the SCREAMING_SNAKE_CASE form of the method name.
      * Has no effect if the return type is not a {@link Projection} type.
      *
+     * <p>The prefix is joined to the inherited criterion name using the
+     * double underscore ({@code __}) composition separator. For example,
+     * {@code as = "CLIENT"} + criterion {@code "NAME"} → {@code "CLIENT__NAME"}.
+     *
+     * <h3>Naming constraints</h3>
+     * <p>The same naming rules that apply to {@link ExposedAs#value()} apply here,
+     * because the prefix participates in the same naming namespace:</p>
+     * <ul>
+     *   <li>Must not contain a double underscore ({@code __}) — reserved as composition separator</li>
+     *   <li>Must not start with an underscore ({@code _CLIENT})</li>
+     *   <li>Must not end with an underscore ({@code CLIENT_})</li>
+     * </ul>
+     *
      * <h3>Example</h3>
      * <pre>{@code
      * @Projection(from = Order.class)
@@ -279,7 +292,7 @@ public @interface Projected {
      *
      *     @Projected(from = "customer", as = "CLIENT")
      *     CustomerDTO getCustomer();
-     *     // Inherited criteria: CLIENT_NAME, CLIENT_EMAIL, etc.
+     *     // Inherited criteria: CLIENT__NAME, CLIENT__EMAIL, etc.
      * }
      * }</pre>
      *

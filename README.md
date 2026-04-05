@@ -693,6 +693,9 @@ A compliant annotation processor should enforce these rules and emit diagnostics
 | `@ExposedAs` value contains `__` | Error | Double underscore is reserved as the composition level separator |
 | `@ExposedAs` value starts with `_` | Error | Leading underscore creates ambiguity with composition boundaries |
 | `@ExposedAs` value ends with `_` | Error | Trailing underscore creates ambiguity with composition boundaries |
+| `@Projected` `as` contains `__` | Error | Same rule — prefix participates in the same namespace |
+| `@Projected` `as` starts with `_` | Error | Same rule — leading underscore at junction |
+| `@Projected` `as` ends with `_` | Error | Same rule — trailing underscore at junction |
 | `dependsOn` references computed field | Error | Dependencies must be source fields only |
 | `then` method is not static | Error | Transformation methods must be pure functions |
 | Collection path without reducer | Error | A collection-traversing dependency must include `:REDUCER` suffix |
