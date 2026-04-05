@@ -297,12 +297,28 @@ Source Fields → [computedBy] → Intermediate Result → [then] → Final Valu
 ```
 
 ```java
-@Computed(
-    dependsOn = {"firstName", "lastName"},
-    computedBy = @Method("buildDisplayName"),
-    then = @Method("uppercase")
+@Projection(
+    from = User.class,
+    providers = {
+        @Provider(UserComputations.class),
+        @Provider(Formatters.class)
+    }
 )
-String getDisplayName();
+public interface UserDTO {
+
+    @Computed(
+        dependsOn = {"firstName", "lastName"},
+        computedBy = @Method("buildDisplayName")
+    )
+    String getDisplayName();
+
+    @Computed(
+        dependsOn = "createdAt",
+        computedBy = @Method("toInstant"),
+        then = @Method("uppercase")
+    )
+    String getFormattedDate();
+}
 ```
 
 | Attribute    | Type       | Required | Description |
@@ -334,10 +350,24 @@ String getFullName();
 The `then` method applies a pure type conversion to the result of `computedBy`. It **must** be `static` — no IoC, no side effects.
 
 ```java
+// Utilities:
+public class DateUtils {
+    public static Instant toInstant(LocalDateTime dt) {
+        return dt.toInstant(ZoneOffset.UTC);
+    }
+}
+
+public class Formatters {
+    public static String formatIso(Instant instant) {
+        return instant.toString();
+    }
+}
+
+// DTO:
 @Computed(
     dependsOn = "createdAt",
-    computedBy = @Method("toInstant"),      // LocalDateTime → Instant
-    then = @Method("formatIso")             // Instant → String
+    computedBy = @Method(type = DateUtils.class, value = "toInstant"),
+    then = @Method(type = Formatters.class, value = "formatIso")
 )
 String getFormattedDate();
 ```
