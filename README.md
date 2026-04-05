@@ -494,7 +494,7 @@ String getTenantId();
 
 | Attribute   | Type       | Required | Default | Description |
 |-------------|------------|----------|---------|-------------|
-| `value`     | `String`   | No       | `""`    | Symbolic name in criteria (default: SCREAMING_SNAKE_CASE of method name) |
+| `value`     | `String`   | No       | `""`    | Symbolic name in criteria (default: logical name derived from method name, casing is implementation-defined) |
 | `operators` | `String[]` | No       | `{}`    | Supported operators (use `StandardOp` constants or custom strings) |
 | `exposed`   | `boolean`  | No       | `true`  | If `false`, field is internal-only (not visible to consumers) |
 
@@ -641,7 +641,7 @@ public interface AddressDTO {
 
 The result: `CustomerDTO` exposes criteria `NAME`, `ADDR__CITY`, and `ADDR__COUNTRY` — without the developer manually redeclaring the nested fields.
 
-The `as` attribute controls the prefix. If omitted, it defaults to the SCREAMING_SNAKE_CASE form of the method name (e.g., `getAddress` → `ADDRESS`).
+The `as` attribute controls the prefix. If omitted, it defaults to a logical name derived from the method name (e.g., `getAddress` → implementation-defined casing of `address`).
 
 ### Naming Convention
 

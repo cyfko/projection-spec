@@ -268,7 +268,8 @@ public @interface Projected {
      * Logical prefix used when this field's nested {@link Projection} type
      * participates in composed criterion inheritance.
      *
-     * <p>If empty, defaults to the SCREAMING_SNAKE_CASE form of the method name.
+     * <p>If empty, defaults to a logical name derived from the method name.
+     * The casing convention is implementation-defined.
      * Has no effect if the return type is not a {@link Projection} type.
      *
      * <p>The prefix is joined to the inherited criterion name using the
@@ -297,7 +298,7 @@ public @interface Projected {
      * }</pre>
      *
      * @return the logical prefix for composed criterion inheritance, or empty
-     *         string to use the default SCREAMING_SNAKE_CASE method name
+     *         string to use the default logical name derived from the method name
      * @since 3.0.0
      */
     String as() default "";

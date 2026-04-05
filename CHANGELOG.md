@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### `@ExposedAs` — Filterable field declaration
 - New annotation `io.github.cyfko.projection.ExposedAs` (migrated from `filterql-spring`)
 - Declares a DTO getter method as filterable with an optional symbolic name and operator set
-- `String value()` — symbolic filter name (defaults to SCREAMING_SNAKE_CASE of method name)
+- `String value()` — symbolic name (defaults to logical name derived from method name, casing is implementation-defined)
 - `String[] operators()` — allowed operators using `StandardOp` constants or custom strings
 - `boolean exposed()` — controls public API visibility (defaults to `true`)
 - **Forbidden** on methods returning a `@Projection` type (compile-time error)

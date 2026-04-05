@@ -68,8 +68,9 @@ import java.lang.annotation.*;
 public @interface ExposedAs {
 
     /**
-     * The symbolic name exposed in selection criteria (e.g. "SITE_NAME", "CREATED_ON").
-     * Defaults to the SCREAMING_SNAKE_CASE form of the method name if empty.
+     * The symbolic name exposed in selection criteria.
+     * Defaults to a logical name derived from the method name if empty.
+     * The casing convention is implementation-defined.
      *
      * <h3>Naming constraints</h3>
      * <p>The double underscore ({@code __}) is a <b>reserved separator</b> used
