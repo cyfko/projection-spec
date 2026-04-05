@@ -5,9 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - Unreleased
+
+### Added
+
+#### `StandardOp` — Standard filter operator constants
+- New interface `io.github.cyfko.projection.StandardOp` containing `String` constants for standard filter operators
+- 14 operators: `EQ`, `NE`, `GT`, `GTE`, `LT`, `LTE`, `RANGE`, `NOT_RANGE`, `MATCHES`, `NOT_MATCHES`, `IN`, `NOT_IN`, `IS_NULL`, `NOT_NULL`
+- Framework-agnostic replacement for the `Op` enum from `filterql-core`
+- Implementations MAY define additional custom operators as plain `String` values
+
+#### `@ExposedAs` — Filterable field declaration
+- New annotation `io.github.cyfko.projection.ExposedAs` (migrated from `filterql-spring`)
+- Declares a DTO getter method as filterable with an optional symbolic name and operator set
+- `String value()` — symbolic filter name (defaults to SCREAMING_SNAKE_CASE of method name)
+- `String[] operators()` — allowed operators using `StandardOp` constants or custom strings
+- `boolean exposed()` — controls public API visibility (defaults to `true`)
+- **Forbidden** on methods returning a `@Projection` type (compile-time error)
+
+#### `@Exposure` — Queryable resource declaration
+- New annotation `io.github.cyfko.projection.Exposure` (migrated from `filterql-spring`)
+- Declares a `@Projection` interface as a queryable resource with dynamic filtering
+- Entirely agnostic of transport protocol, delivery mechanism, and response format
+- `String value()` — logical resource name
+- `String namespace()` — logical namespace grouping (replaces `basePath`)
+- `Strategy strategy()` — result cardinality (`WINDOWED`, `FULL`, `CUSTOM`)
+- `Method[] pipes()` — ordered filter context transformation pipeline
+- `Method handler()` — custom handler producing the resource result
 
 ### Changed
+
+#### `@Projected` — New attributes for composed filter inheritance
+- **BREAKING**: Added `String as() default ""` — logical prefix for composed filter inheritance
+- **BREAKING**: Added `boolean cycleBreak() default false` — breaks cycles in bidirectional projections
+- Added `@Documented` meta-annotation
+- `from()` remains mandatory (no default value)
+
+### Migration Guide (from `filterql-spring` v4.x)
+
+Replace imports only — no logic changes required:
+
+```
+Find:    import io.github.cyfko.filterql.core.api.Op;
+Replace: import io.github.cyfko.projection.StandardOp;
+
+Find:    import io.github.cyfko.filterql.spring.ExposedAs;
+Replace: import io.github.cyfko.projection.ExposedAs;
+
+Find:    import io.github.cyfko.filterql.spring.Exposure;
+Replace: import io.github.cyfko.projection.Exposure;
+
+Find:    Op.EQ
+Replace: StandardOp.EQ
+(repeat for all Op.* references)
+```
+
+Additionally, update renamed attributes and strategies:
+
+```
+basePath       → namespace
+endpointName   → supprimé (redondant avec @Method)
+Strategy.PAGINATED → Strategy.WINDOWED
+Strategy.LIST      → Strategy.FULL
+```
+
+---
+
+## [2.0.1] - Unreleased
 
 #### `@MethodReference` renamed to `@Method`
 - **BREAKING**: `@MethodReference` annotation renamed to `@Method` for improved readability and brevity

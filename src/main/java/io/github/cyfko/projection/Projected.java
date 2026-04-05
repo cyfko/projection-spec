@@ -1,5 +1,6 @@
 package io.github.cyfko.projection;
 
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -88,6 +89,33 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
+ * <h2>Composed Criterion Inheritance</h2>
+ * <p>
+ * When a {@code @Projected} field returns a type annotated with {@link Projection},
+ * its queryable properties (declared via {@link ExposedAs}) are automatically
+ * inherited by the parent DTO under a logical prefix. The prefix is determined by
+ * {@link #as()}, defaulting to the SCREAMING_SNAKE_CASE form of the method name.
+ * </p>
+ *
+ * <h3>Cycle Prevention</h3>
+ * <p>
+ * If two projections reference each other (A → B → A), a cycle is created.
+ * Use {@link #cycleBreak()} to break the cycle on one side:
+ * </p>
+ * <pre>{@code
+ * @Projection(from = Department.class)
+ * public interface DepartmentDTO {
+ *     @Projected(from = "manager")
+ *     EmployeeDTO getManager();
+ * }
+ *
+ * @Projection(from = Employee.class)
+ * public interface EmployeeDTO {
+ *     @Projected(from = "department", cycleBreak = true)
+ *     DepartmentDTO getDepartment();  // Projected but NOT inherited for querying
+ * }
+ * }</pre>
+ *
  * <h2>Comparison with @Computed</h2>
  * <table border="1">
  * <tr>
@@ -168,9 +196,12 @@ import java.lang.annotation.Target;
  * @author Frank KOSSI
  * @see Projection
  * @see Computed
+ * @see ExposedAs
+ * @see Exposure
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD, ElementType.FIELD})
+@Documented
 public @interface Projected {
 
     /**
@@ -232,4 +263,58 @@ public @interface Projected {
      * @return the source field path, or empty string to use the DTO field name
      */
     String from();
+
+    /**
+     * Logical prefix used when this field's nested {@link Projection} type
+     * participates in composed criterion inheritance.
+     *
+     * <p>If empty, defaults to the SCREAMING_SNAKE_CASE form of the method name.
+     * Has no effect if the return type is not a {@link Projection} type.
+     *
+     * <h3>Example</h3>
+     * <pre>{@code
+     * @Projection(from = Order.class)
+     * @Exposure(value = "orders", namespace = "api")
+     * public interface OrderDTO {
+     *
+     *     @Projected(from = "customer", as = "CLIENT")
+     *     CustomerDTO getCustomer();
+     *     // Inherited criteria: CLIENT_NAME, CLIENT_EMAIL, etc.
+     * }
+     * }</pre>
+     *
+     * @return the logical prefix for composed criterion inheritance, or empty
+     *         string to use the default SCREAMING_SNAKE_CASE method name
+     * @since 3.0.0
+     */
+    String as() default "";
+
+    /**
+     * If {@code true}, excludes this field from composed criterion inheritance,
+     * breaking potential cycles.
+     *
+     * <p>The field remains available for projection (read), but its
+     * {@link Projection} type's queryable properties are NOT inherited
+     * by the parent DTO.
+     *
+     * <p>Required when a cycle is detected at compile time:
+     * <pre>
+     * A → B → A  (cycle: set cycleBreak = true on one side)
+     * </pre>
+     *
+     * <h3>Example</h3>
+     * <pre>{@code
+     * @Projection(from = Employee.class)
+     * public interface EmployeeDTO {
+     *
+     *     @Projected(from = "department", cycleBreak = true)
+     *     DepartmentDTO getDepartment();
+     *     // DepartmentDTO's criteria are NOT inherited here
+     * }
+     * }</pre>
+     *
+     * @return {@code true} to break criterion composition cycle
+     * @since 3.0.0
+     */
+    boolean cycleBreak() default false;
 }
