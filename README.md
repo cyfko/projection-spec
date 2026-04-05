@@ -88,22 +88,22 @@ The specification imports no framework types. Operator values are plain `String`
 The specification defines eight annotation types organized in three conceptual layers. Each layer builds on the one below it.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     LAYER 3 — EXPOSURE                                  │
-│   @ExposedAs       @Exposure        StandardOp                          │
-│   (queryable       (resource        (standard                           │
-│    fields)          declaration)     operators)                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                     LAYER 2 — MAPPING                                   │
-│   @Projected                        @Computed                           │
-│   (direct source-to-DTO             (derived values via                 │
-│    field mapping)                    two-stage pipeline)                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│                     LAYER 1 — STRUCTURE                                 │
-│   @Projection       @Provider        @Method                            │
-│   (entry point:     (computation     (method                            │
-│    source + providers) engine)        reference)                        │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   LAYER 3 — EXPOSURE                                        │
+│                                                                                             │
+│   @ExposedAs              @Exposure                    StandardOp                           │
+│   (queryable fields)      (resource declaration)       (standard operators)                 │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                   LAYER 2 — MAPPING                                         │
+│                                                                                             │
+│   @Projected                                      @Computed                                 │
+│   (direct source-to-DTO field mapping)            (derived values via two-stage pipeline)   │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                   LAYER 1 — STRUCTURE                                       │
+│                                                                                             │
+│   @Projection                          @Provider                @Method                     │
+│   (entry point: source + providers)    (computation engine)     (method reference)          │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Layer 1 (Structure)** establishes the foundation: which source class is being projected, which classes provide computation logic, and how individual methods are referenced.
