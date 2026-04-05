@@ -610,6 +610,8 @@ When a `@Projected` field returns a type that is itself annotated with `@Project
 
 ### How It Works
 
+The double underscore (`__`) is the **reserved composition separator**. It marks the boundary between the prefix and the inherited criterion name:
+
 ```java
 @Projection(from = Customer.class)
 @Exposure("customers")
@@ -621,7 +623,7 @@ public interface CustomerDTO {
 
     @Projected(from = "address", as = "ADDR")
     AddressDTO getAddress();
-    // AddressDTO's criteria are inherited under prefix ADDR_
+    // AddressDTO's criteria are inherited under prefix ADDR__
 }
 
 @Projection(from = Address.class)
@@ -629,17 +631,29 @@ public interface AddressDTO {
 
     @ExposedAs(operators = {StandardOp.EQ})
     String getCity();
-    // Inherited as: ADDR_CITY
+    // Inherited as: ADDR__CITY
 
     @ExposedAs(operators = {StandardOp.EQ})
     String getCountry();
-    // Inherited as: ADDR_COUNTRY
+    // Inherited as: ADDR__COUNTRY
 }
 ```
 
-The result: `CustomerDTO` exposes criteria `NAME`, `ADDR_CITY`, and `ADDR_COUNTRY` — without the developer manually redeclaring the nested fields.
+The result: `CustomerDTO` exposes criteria `NAME`, `ADDR__CITY`, and `ADDR__COUNTRY` — without the developer manually redeclaring the nested fields.
 
-The `as` attribute controls the prefix. If omitted, it defaults to the SCREAMING_SNAKE_CASE form of the method name (e.g., `getAddress` → `ADDRESS_`).
+The `as` attribute controls the prefix. If omitted, it defaults to the SCREAMING_SNAKE_CASE form of the method name (e.g., `getAddress` → `ADDRESS`).
+
+### Naming Convention
+
+| Symbol | Meaning | Example |
+|--------|---------|--------|
+| `_` (single) | Word separator within a name | `SITE_NAME`, `SOURCE_SITE` |
+| `__` (double) | Composition level boundary | `SOURCE_SITE__SITE_NAME` |
+
+To prevent ambiguity, `@ExposedAs(value = "...")` enforces these rules at compile time:
+- **No double underscores** (`__`) in the value — reserved for composition
+- **No leading underscore** (`_NAME`) — would create ambiguity at the junction
+- **No trailing underscore** (`NAME_`) — same reason
 
 ### Cycle Prevention
 
@@ -676,9 +690,11 @@ A compliant annotation processor should enforce these rules and emit diagnostics
 | Missing `from` on `@Projected` | Error | `from` is mandatory — no default |
 | Invalid source path | Error | `@Projected(from = "x.y.z")` must resolve to an existing field chain on the source class |
 | `@ExposedAs` on `@Projection` return type | Error | Use composed criterion inheritance instead |
+| `@ExposedAs` value contains `__` | Error | Double underscore is reserved as the composition level separator |
+| `@ExposedAs` value starts with `_` | Error | Leading underscore creates ambiguity with composition boundaries |
+| `@ExposedAs` value ends with `_` | Error | Trailing underscore creates ambiguity with composition boundaries |
 | `dependsOn` references computed field | Error | Dependencies must be source fields only |
 | `then` method is not static | Error | Transformation methods must be pure functions |
-| `reducers` count mismatch | Error | Removed — reducers are now inline in `dependsOn` paths |
 | Collection path without reducer | Error | A collection-traversing dependency must include `:REDUCER` suffix |
 | Scalar path with reducer | Error | Non-collection paths must not include `:REDUCER` suffix |
 | Collection path not ending with field | Error | `"orders:SUM"` ❌ — must be `"orders.total:SUM"` |

@@ -70,6 +70,30 @@ public @interface ExposedAs {
     /**
      * The symbolic name exposed in selection criteria (e.g. "SITE_NAME", "CREATED_ON").
      * Defaults to the SCREAMING_SNAKE_CASE form of the method name if empty.
+     *
+     * <h3>Naming constraints</h3>
+     * <p>The double underscore ({@code __}) is a <b>reserved separator</b> used
+     * by composed criterion inheritance to mark composition level boundaries.
+     * For example, when a {@link Projected} field with {@code as = "SOURCE_SITE"}
+     * composes a projection containing a criterion named {@code "SITE_NAME"},
+     * the inherited criterion becomes {@code "SOURCE_SITE__SITE_NAME"}.</p>
+     *
+     * <p>To prevent ambiguity between user-defined names and composition boundaries,
+     * the following naming rules are enforced at compile time:</p>
+     * <ul>
+     *   <li>The value <b>must not</b> contain a double underscore ({@code __})</li>
+     *   <li>The value <b>must not</b> start with an underscore ({@code _NAME})</li>
+     *   <li>The value <b>must not</b> end with an underscore ({@code NAME_})</li>
+     * </ul>
+     *
+     * <h3>Valid and invalid examples</h3>
+     * <pre>{@code
+     * @ExposedAs("SITE_NAME")         // ✅ single underscore = word separator
+     * @ExposedAs("CREATED_AT")        // ✅
+     * @ExposedAs("SOURCE_SITE__NAME") // ❌ double underscore is reserved
+     * @ExposedAs("_SITE_NAME")        // ❌ leading underscore
+     * @ExposedAs("SITE_NAME_")        // ❌ trailing underscore
+     * }</pre>
      */
     String value() default "";
 
