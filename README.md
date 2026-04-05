@@ -150,7 +150,7 @@ Explicit declaration makes the resolution scope visible and deterministic. A rea
 
 ### @Provider
 
-A `@Provider` registers a class containing computation and transformation methods. Providers are the workhorses of the system — they hold all business logic that cannot be expressed as a simple field copy.
+A `@Provider` registers a class containing computation and transformation methods. Providers are a convenience mechanism for grouping related methods and enabling convention-based resolution (`to[FieldName]`). They are **not required** when `@Method` references specify `type` explicitly — in that case, the processor resolves the method directly from the specified class.
 
 ```java
 // Static provider — pure functions, no IoC
@@ -207,7 +207,9 @@ First-match is trivially deterministic. There is no ambiguity, no scoring, no su
 
 ### @Method
 
-`@Method` is a lightweight reference to a specific method in a specific class. It is never used standalone — it appears inside `@Computed`, `@Exposure`, and other annotations that need to point to executable logic.
+`@Method` is a lightweight reference to a method. It appears inside `@Computed`, `@Exposure`, and other annotations that need to point to executable logic.
+
+When `type` is specified, `@Method` is a **direct reference** to a method in a specific class — no providers are needed. When `type` is omitted, resolution falls back to the providers declared in `@Projection.providers()`.
 
 ```java
 @Method()                                              // Convention: to[FieldName]
@@ -218,17 +220,17 @@ First-match is trivially deterministic. There is no ambiguity, no scoring, no su
 
 | Attribute | Type       | Required | Description |
 |-----------|------------|----------|-------------|
-| `type`    | `Class<?>` | No       | Restrict search to this class (default: search all providers) |
+| `type`    | `Class<?>` | No       | Direct reference to the class containing the method. When specified, the processor looks in this class only, bypassing all providers. Default (`void.class`): fall back to provider-based resolution. |
 | `value`   | `String`   | No       | Method name (default: convention `to[FieldName]`) |
 
 #### Resolution Matrix
 
 | `type`  | `value` | Resolution |
 |---------|---------|------------|
-| Not set | Not set | Search all providers for `to[FieldName]` |
-| Not set | Set     | Search all providers for the specified method |
-| Set     | Not set | Search specified class for `to[FieldName]` |
-| Set     | Set     | Use exactly that method in that class |
+| Not set | Not set | Search DTO, then all declared providers for `to[FieldName]` |
+| Not set | Set     | Search DTO, then all declared providers for the specified method |
+| Set     | Not set | Look in the specified class only for `to[FieldName]` (providers bypassed) |
+| Set     | Set     | Look in the specified class only for that exact method (providers bypassed) |
 
 **Rationale — the `to[FieldName]` convention:**
 Convention-over-configuration reduces annotation noise. For a field `getFullName()`, the processor looks for `toFullName(...)` — a predictable, readable pattern. The convention can always be overridden with an explicit `value`.
