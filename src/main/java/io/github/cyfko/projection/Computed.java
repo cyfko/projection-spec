@@ -396,8 +396,65 @@ public @interface Computed {
      * <ul>
      *   <li><b>Simple field:</b> {@code "email"} → {@code source.getEmail()}</li>
      *   <li><b>Nested field:</b> {@code "address.city"} → {@code source.getAddress().getCity()}</li>
-     *   <li><b>Collection traversal:</b> {@code "orders.total"} → requires {@link #reducers()}</li>
+     *   <li><b>Collection traversal with reducer:</b> {@code "orders.total:SUM"} →
+     *       aggregates all {@code total} values across the {@code orders} collection
+     *       using the SUM function</li>
      * </ul>
+     *
+     * <h2>Inline Reducer Syntax</h2>
+     * <p>When a dependency path traverses a collection, a reducer <b>must</b> be
+     * specified inline using the {@code :REDUCER} suffix:</p>
+     * <pre>{@code
+     * "path.to.collection.field:REDUCER_NAME"
+     * }</pre>
+     *
+     * <p>The reducer is separated from the field path by a colon ({@code :}).
+     * Standard reducer names are defined in {@link Reduce}. Implementations may
+     * support additional custom reducer names.</p>
+     *
+     * <p><b>Rationale — inline syntax:</b> Inlining the reducer directly in the dependency path
+     * eliminates the error-prone positional mapping that a separate {@code reducers}
+     * array would require. Each dependency is self-describing: the reader immediately
+     * sees what aggregation is applied, and reordering or adding dependencies cannot
+     * silently shift reducer assignments.</p>
+     *
+     * <h2>Why Reducers Are Mandatory on Collection Paths</h2>
+     * <p>A dependency path traversing a collection <b>must</b> include a reducer.
+     * This is not optional, for the following reasons:</p>
+     *
+     * <h3>1. Data source delegation</h3>
+     * <p>A collection may contain thousands to millions of elements. The reducer
+     * is a declarative hint that allows the implementation to delegate the aggregation
+     * to the data source (e.g., SQL {@code SUM()}, MongoDB {@code $sum}) rather than
+     * loading the entire collection into Java memory.</p>
+     *
+     * <h3>2. Memory safety</h3>
+     * <p>Allowing a collection-traversing path without a reducer would imply passing
+     * a potentially unbounded {@code List<T>} to the provider method. The specification
+     * cannot guarantee that such a collection fits in memory. Mandatory reducers
+     * ensure the result is always a scalar, produced at the data source level.</p>
+     *
+     * <h3>3. Custom aggregation via IoC providers</h3>
+     * <p>For aggregation logic that exceeds standard reducers (weighted averages,
+     * conditional sums, etc.), the recommended approach is an IoC-managed provider
+     * with direct access to the data source. The provider controls the query,
+     * pagination, and memory usage. The {@code dependsOn} then references a scalar
+     * field (e.g., an entity identifier), not the collection:</p>
+     * <pre>{@code
+     * // Custom aggregation — provider handles the query directly
+     * @Computed(dependsOn = "id")
+     * BigDecimal getWeightedAverage();
+     *
+     * @Service
+     * public class OrderAnalytics {
+     *     @Inject
+     *     private OrderRepository orderRepo;
+     *
+     *     public BigDecimal toWeightedAverage(Long userId) {
+     *         return orderRepo.calculateWeightedAverage(userId);
+     *     }
+     * }
+     * }</pre>
      *
      * <h2>Dependency Rules</h2>
      * <ul>
@@ -405,6 +462,8 @@ public @interface Computed {
      *   <li>Dependencies <b>cannot</b> reference other {@code @Computed} fields</li>
      *   <li>Parameter types are inferred from the source entity model</li>
      *   <li>Order matters: dependencies are passed to the method in this order</li>
+     *   <li>A collection-traversing path <b>must</b> include a {@code :REDUCER} suffix</li>
+     *   <li>A collection-traversing path <b>must</b> end with a field, not the collection itself</li>
      * </ul>
      *
      * <h2>Why Entity-Only Dependencies?</h2>
@@ -430,17 +489,36 @@ public @interface Computed {
      * @Computed(dependsOn = {"firstName", "lastName", "middleName"})
      * String getFullName();
      *
-     * // Nested field access
+     * // Nested field access (scalar, no reducer needed)
      * @Computed(dependsOn = {"address.city", "address.country"})
      * String getLocation();
      *
-     * // Collection traversal (requires reducer)
-     * @Computed(
-     *     dependsOn = "orders.total",
-     *     reducers = {Reduce.SUM}
-     * )
+     * // Collection traversal with inline reducer
+     * @Computed(dependsOn = "orders.total:SUM")
      * BigDecimal getTotalOrders();
+     *
+     * // Mix of scalars and collections
+     * @Computed(dependsOn = {"id", "name", "orders.total:SUM", "refunds.amount:SUM"})
+     * String getFinancialSummary();
+     *
+     * // Nested collection traversal
+     * @Computed(dependsOn = "departments.teams.employees.salary:AVG")
+     * BigDecimal getAvgSalary();
      * }</pre>
+     *
+     * <h2>Standard Reducers</h2>
+     * <p>The {@link Reduce} interface provides standard reducer constants:
+     * {@code SUM}, {@code AVG}, {@code COUNT}, {@code MIN}, {@code MAX},
+     * {@code COUNT_DISTINCT}. Implementations must support at least these.
+     * Additional custom reducers may be supported depending on the implementation.</p>
+     *
+     * <h2>Path Semantics</h2>
+     * <p>A path containing dots is <b>not</b> necessarily a collection traversal:</p>
+     * <ul>
+     *   <li>{@code "address.city"} → scalar nested field (no reducer needed)</li>
+     *   <li>{@code "orders.total:SUM"} → collection traversal (reducer required)</li>
+     * </ul>
+     * <p>The distinction depends on the source model and is determined by the implementation.</p>
      *
      * @return array of source field paths that this computed field requires
      */
@@ -670,86 +748,6 @@ public @interface Computed {
      */
     Method then() default @Method;
 
-    /**
-     * Reducer functions to apply to dependencies that traverse collections.
-     *
-     * <p>When a dependency path traverses one or more collections (e.g., {@code "orders.total"}),
-     * a reducer <b>must</b> be specified to aggregate the multiple values into a single result.</p>
-     *
-     * <h2>Correspondence Rule</h2>
-     * <p>Reducers correspond <b>only</b> to dependencies that traverse collections, in order:</p>
-     * <pre>{@code
-     * @Computed(
-     *     dependsOn = {"id", "address.city", "orders.total", "orders.quantity"},
-     *     //          scalar  scalar nested   collection     collection
-     *     reducers = {Reduce.SUM, Reduce.COUNT}
-     *     //          ↑ orders.total  ↑ orders.quantity
-     * )
-     * }</pre>
-     *
-     * <p><b>Constraint:</b> {@code reducers.length} must equal the number of dependencies
-     * that traverse collections (as determined by the implementation based on the source model).</p>
-     *
-     * <h2>Path Semantics</h2>
-     * <p>A path containing dots is <b>not</b> necessarily a collection traversal:</p>
-     * <ul>
-     *   <li>{@code "address.city"} → scalar nested field ({@code @Embedded} or {@code @ManyToOne})</li>
-     *   <li>{@code "orders.total"} → collection traversal ({@code @OneToMany})</li>
-     * </ul>
-     * <p>The distinction depends on the source model and is determined by the implementation.</p>
-     *
-     * <h2>Collection Path Rule</h2>
-     * <p>A path traversing a collection <b>must</b> end with a simple field:</p>
-     * <pre>{@code
-     * // ✅ VALID: traverses collection(s), ends with field
-     * "orders.total"
-     * "departments.teams.employees.salary"
-     *
-     * // ❌ INVALID: ends with a collection
-     * "orders"
-     * "departments.teams.employees"
-     * }</pre>
-     *
-     * <h2>Standard Reducers</h2>
-     * <p>The {@link Reduce} interface provides standard reducer constants. Implementations
-     * may support additional custom reducers.</p>
-     *
-     * <h2>Examples</h2>
-     * <pre>{@code
-     * // Simple sum reduction
-     * @Computed(
-     *     dependsOn = "orders.total",
-     *     reducers = {Reduce.SUM}
-     * )
-     * BigDecimal getTotalOrders();
-     *
-     * // Count elements
-     * @Computed(
-     *     dependsOn = "orders.id",
-     *     reducers = {Reduce.COUNT}
-     * )
-     * Long getOrderCount();
-     *
-     * // Nested collections
-     * @Computed(
-     *     dependsOn = "departments.teams.employees.salary",
-     *     reducers = {Reduce.AVG}
-     * )
-     * BigDecimal getAvgSalary();
-     *
-     * // Mix of scalars and collections
-     * @Computed(
-     *     dependsOn = {"id", "name", "orders.total", "refunds.amount"},
-     *     reducers = {Reduce.SUM, Reduce.SUM}
-     * )
-     * String getFinancialSummary();
-     * }</pre>
-     *
-     * @return array of reducer names for collection-traversing dependencies
-     * @since 1.1.0
-     * @see Reduce
-     */
-    String[] reducers() default {};
 
     /**
      * Standard reducer constants for aggregating collection values.

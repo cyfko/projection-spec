@@ -325,10 +325,9 @@ public interface UserDTO {
 
 | Attribute    | Type       | Required | Description |
 |--------------|------------|----------|-------------|
-| `dependsOn`  | `String[]` | Yes      | Source fields this computation requires |
+| `dependsOn`  | `String[]` | Yes      | Source fields this computation requires (with optional `:REDUCER` suffix for collections) |
 | `computedBy` | `Method`   | No       | Business logic method (default: convention `to[FieldName]`) |
 | `then`       | `Method`   | No       | Pure transformation applied to `computedBy` result |
-| `reducers`   | `String[]` | No       | Aggregation functions for collection-traversing dependencies |
 
 #### Stage 1: Business Logic (`computedBy`)
 
@@ -380,35 +379,65 @@ Transformations are pure functions: same input, same output, no side effects. St
 **Rationale — why source-only dependencies:**
 Allowing computed fields to depend on other computed fields would introduce dependency graphs, ordering constraints, and potential cycles. By requiring all dependencies to come from the source, every field is independently computable, and the processor never needs topological sorting.
 
-#### Collection Aggregation (`reducers`)
+#### Collection Aggregation (Inline Reducers)
 
-When a dependency path traverses a collection (e.g., `"orders.total"`), a reducer aggregates the multiple values into a single result:
+When a dependency path traverses a collection, a reducer is specified **inline** using the `:REDUCER` suffix directly in the path:
 
 ```java
 @Computed(
-    dependsOn = {"id", "orders.total", "refunds.amount"},
-    //          scalar  collection     collection
-    reducers = {Computed.Reduce.SUM, Computed.Reduce.SUM}
-    //          ↑ orders.total        ↑ refunds.amount
+    dependsOn = {"id", "orders.total:SUM", "refunds.amount:SUM"}
 )
 String getFinancialReport();
 ```
 
-The `reducers` array corresponds only to collection-traversing dependencies, in order. Scalar dependencies are skipped. Standard reducers are defined in `Computed.Reduce`:
+Each dependency is self-describing — the reducer is co-located with the field it applies to. No separate array, no positional mapping, no risk of silent misalignment.
 
-| Reducer          | Description |
-|------------------|-------------|
-| `SUM`            | Sum of all values |
-| `AVG`            | Arithmetic mean |
-| `COUNT`          | Count of elements |
-| `MIN`            | Minimum value |
-| `MAX`            | Maximum value |
-| `COUNT_DISTINCT` | Count of distinct values |
+Standard reducers are defined in `Computed.Reduce`:
+
+| Reducer          | Syntax Example                        | Description |
+|------------------|---------------------------------------|-------------|
+| `SUM`            | `"orders.total:SUM"`                  | Sum of all values |
+| `AVG`            | `"employees.salary:AVG"`              | Arithmetic mean |
+| `COUNT`          | `"orders.id:COUNT"`                   | Count of elements |
+| `MIN`            | `"bids.amount:MIN"`                   | Minimum value |
+| `MAX`            | `"bids.amount:MAX"`                   | Maximum value |
+| `COUNT_DISTINCT` | `"orders.status:COUNT_DISTINCT"`      | Count of distinct values |
 
 **Rules:**
-- Collection paths must end with a field (`"orders.total"` ✅, `"orders"` ❌)
-- `reducers.length` must equal the number of collection-traversing dependencies
+- Collection paths must include a `:REDUCER` suffix (`"orders.total:SUM"` ✅, `"orders.total"` ❌)
+- Collection paths must end with a field before the reducer (`"orders.total:SUM"` ✅, `"orders:SUM"` ❌)
+- Scalar paths must NOT include a reducer (`"address.city"` ✅, `"address.city:SUM"` ❌)
 - Whether a path traverses a collection depends on the source model and is determined by the implementation
+
+**Rationale — why inline instead of a separate `reducers` array:**
+A separate array requires positional correspondence between two parallel lists. Adding, removing, or reordering a dependency silently shifts the reducer assignments. Inline syntax makes each dependency self-contained and eliminates this entire class of bugs.
+
+**Rationale — why reducers are mandatory on collection paths:**
+
+A collection may contain thousands to millions of elements. The reducer is a **declarative hint** that allows the implementation to delegate the aggregation to the data source (SQL `SUM()`, MongoDB `$sum`, etc.) rather than loading the entire collection into Java memory. Without a reducer, the implementation would need to pass a potentially unbounded `List<T>` to the provider method — a risk the specification refuses to take.
+
+For **custom aggregation** logic that exceeds standard reducers (weighted averages, conditional sums, etc.), the recommended approach is an IoC-managed provider with direct access to the data source:
+
+```java
+// Custom aggregation — provider handles the query directly
+@Computed(dependsOn = "id")
+BigDecimal getWeightedAverage();
+
+@Service
+public class OrderAnalytics {
+    @Inject
+    private OrderRepository orderRepo;
+
+    public BigDecimal toWeightedAverage(Long userId) {
+        // Custom query — fully controlled, memory-safe
+        return orderRepo.calculateWeightedAverage(userId);
+    }
+}
+```
+
+This separation gives the best of both worlds:
+- **Standard aggregations** (SUM, AVG, COUNT...) → inline reducer, optimized at the data source
+- **Custom aggregations** (weighted averages, conditional logic...) → IoC provider with repository access, fully controlled
 
 ---
 
@@ -649,9 +678,10 @@ A compliant annotation processor should enforce these rules and emit diagnostics
 | `@ExposedAs` on `@Projection` return type | Error | Use composed criterion inheritance instead |
 | `dependsOn` references computed field | Error | Dependencies must be source fields only |
 | `then` method is not static | Error | Transformation methods must be pure functions |
-| `reducers` count mismatch | Error | Must equal the number of collection-traversing dependencies |
-| Collection path without reducer | Error | A collection-traversing dependency requires a reducer |
-| Collection path not ending with field | Error | `"orders"` ❌ — must be `"orders.total"` |
+| `reducers` count mismatch | Error | Removed — reducers are now inline in `dependsOn` paths |
+| Collection path without reducer | Error | A collection-traversing dependency must include `:REDUCER` suffix |
+| Scalar path with reducer | Error | Non-collection paths must not include `:REDUCER` suffix |
+| Collection path not ending with field | Error | `"orders:SUM"` ❌ — must be `"orders.total:SUM"` |
 | `@Exposure` without `@Projection` | Warning | Has no effect |
 | Bidirectional projection cycle without `cycleBreak` | Error | One side must set `cycleBreak = true` |
 | No matching provider method | Error | No method matching the signature was found in any provider |
@@ -707,10 +737,7 @@ public interface UserDTO {
     )
     String getFormattedDate();
 
-    @Computed(
-        dependsOn = "orders.total",
-        reducers = {Computed.Reduce.SUM}
-    )
+    @Computed(dependsOn = "orders.total:SUM")
     BigDecimal getTotalOrderValue();
 
     @ExposedAs(value = "EMAIL", operators = {StandardOp.EQ, StandardOp.MATCHES})
