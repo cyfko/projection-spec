@@ -586,6 +586,8 @@ QueryContext → Pipe1 → Pipe2 → ... → Handler
 )
 ```
 
+Unlike `@Computed.computedBy`, the `to[FieldName]` convention does **not** apply to pipes. Each pipe must specify an explicit method name — there is no field-level context from which a convention name can be derived. An empty `@Method()` in `pipes` is a compile-time error.
+
 Typical use cases for pipes:
 - **Tenant isolation:** inject a mandatory tenant criterion
 - **Access control:** restrict results based on user permissions
@@ -598,6 +600,8 @@ When specified, the implementation delegates execution to this method instead of
 - Querying a search engine or cache layer instead of the primary data source
 - Combining data from multiple sources
 - Triggering auditing or metrics alongside query execution
+
+The `to[FieldName]` convention does not apply to handler. An empty `@Method()` is equivalent to "no handler" — the implementation generates a default handler. However, specifying `type` without `value` is a compile-time error: a direct class reference without a method name is ambiguous.
 
 **Rationale — why no HTTP, REST, or pagination vocabulary:**
 The specification must outlive any single protocol. By using abstract concepts (namespace, cardinality, pipes, handler), the same `@Exposure` annotation works whether the implementation generates a REST controller, a GraphQL resolver, a gRPC service, or a Kafka consumer. The implementation translates; the specification describes intent.
@@ -704,6 +708,8 @@ A compliant annotation processor should enforce these rules and emit diagnostics
 | `@Exposure` without `@Projection` | Warning | Has no effect |
 | Bidirectional projection cycle without `cycleBreak` | Error | One side must set `cycleBreak = true` |
 | No matching provider method | Error | No method matching the signature was found in any provider |
+| `@Exposure` pipe with empty method name | Error | Each pipe must specify an explicit method name — the `to[FieldName]` convention is unavailable at type level |
+| `@Exposure` handler with `type` but no method name | Error | A direct class reference without a method name is ambiguous |
 
 ---
 
